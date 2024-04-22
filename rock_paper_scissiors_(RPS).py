@@ -8,14 +8,18 @@ def rock_paper_scissiors():
     player = input(
         "Choose your champion! Rock, the one that beats scissors, Paper, which defeats rock, and Scissors, the one to beat paper!:  "
     )
+
     if (
-        player.lower() != "rock"
-        or player.lower() != "paper"
-        or player.lower() != "scissors"
-        or player.lower() != "scissor"
+        player.lower() == "rock"
+        or player.lower() == "paper"
+        or player.lower() == "scissors"
+        or player.lower() == "scissor"
     ):
+        print("")
+    else:
         print("you can only play 'rock', 'paper', or 'scissors'.")
         exit()
+
     rock_paper_scissiors = int(random.randint(1, 3))
     if rock_paper_scissiors == 1:
         print("your opponent played 'rock'!")
@@ -25,20 +29,20 @@ def rock_paper_scissiors():
         elif player.lower() == "paper":
             print(winning_emoji)
             return "you win!!"
-        elif player.lower() == "scissiors" or player.lower == "scissior":
+        elif player.lower() == "scissors" or player.lower == "scissor":
             print(loss_emoji)
             return "you lose :( try again next time!"
     if rock_paper_scissiors == 2:
         print("your opponent played 'paper'!")
         if player.lower() == "rock":
-            print(winning_emoji)
-            return "you win"
+            print(loss_emoji)
+            return "you lose :( try again next time!"
         elif player.lower() == "paper":
             print(Tie_emoji)
             return "Tie"
-        elif player.lower() == "scissiors" or player.lower == "scissior":
-            print(loss_emoji)
-            return "you lose :( try again next time!"
+        elif player.lower() == "scissors" or player.lower == "scissor":
+            print(winning_emoji)
+            return "you win"
     if rock_paper_scissiors == 3:
         print("your opponent played 'scissors'!")
         if player.lower() == "rock":
@@ -47,7 +51,7 @@ def rock_paper_scissiors():
         elif player.lower() == "paper":
             print(loss_emoji)
             return "you lose :( try again next time!"
-        elif player.lower() == "scissiors" or player.lower == "scissior":
+        elif player.lower() == "scissors" or player.lower == "scissor":
             print(Tie_emoji)
             return "Tie"
 
