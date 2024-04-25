@@ -56,11 +56,12 @@ def rock_paper_scissiors():
             return "Tie"
 
 
-Times_want_to_play = input("How many times do you want to play?:  ") or 3
-if type(Times_want_to_play) == str:
-    if Times_want_to_play.isdigit() == False:
-        print("You need to input a number, not a string or bool")
-        exit()
-    Times_want_to_play = int(Times_want_to_play)
-for i in range(Times_want_to_play):
-    print(rock_paper_scissiors())
+def run():
+    Times_want_to_play = input("How many times do you want to play?:  ") or 3
+    if type(Times_want_to_play) == str:
+        if Times_want_to_play.isdigit() == False:
+            print("You need to input a number, not a string or bool")
+            exit()
+        Times_want_to_play = int(Times_want_to_play)
+    for i in range(Times_want_to_play):
+        print(rock_paper_scissiors())

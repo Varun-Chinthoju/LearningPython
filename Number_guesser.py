@@ -81,6 +81,3 @@ def number_guesser():
             trys += 1
     print("thanks for playing!")
     print(winning_emoji)
-
-
-number_guesser()
