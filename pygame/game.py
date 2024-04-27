@@ -15,8 +15,6 @@ border_color = (0, 0, 0)
 screen.fill(BG_COLOR)
 speed = 2.5
 fps = 120
-r1_hit = pygame.USEREVENT + 1
-r2_hit = pygame.USEREVENT + 2
 r1_lives = 3
 r2_lives = 3
 bullets_vel = 7
@@ -25,6 +23,8 @@ rocket_width = 55
 rocket_height = 40
 lives_height = 50
 lives_width = 50
+background = pygame.image.load("background.webp")
+background_img = pygame.transform.scale(background, (SCREENWIDTH, SCREENHEIGHT))
 r2_live1 = pygame.image.load("lives.jpeg")
 r2_l1 = pygame.transform.scale(r2_live1, (lives_width, lives_height))
 
@@ -62,19 +62,14 @@ def handle_bullets(r1_bullets, r2_bullets, r1, r2):
     for bullet in r1_bullets:
         bullet.x += bullets_vel
         if r2.colliderect(bullet):
-            pygame.event.post(pygame.event.Event(r2_hit))
             r1_bullets.remove(bullet)
             r2_lives -= 1
 
     for bullet in r2_bullets:
         bullet.x -= bullets_vel
         if r1.colliderect(bullet):
-            pygame.event.post(pygame.event.Event(r1_hit))
             r2_bullets.remove(bullet)
             r1_lives -= 1
-            if r2_lives == 0:
-                print("player 2 wins!!!!")
-                pygame.quit()
 
 
 def r1_movement(key, r1):
@@ -108,10 +103,11 @@ def r2_movement(key, r2):
 
 
 def draw_window(r1, r2, r1_bullets, r2_bullets):
-    screen.fill(BG_COLOR)
+    screen.blit(background_img, ((0, 0)))
     pygame.draw.rect(screen, border_color, border)
     screen.blit(rocket1, (r1.x, r1.y))
     screen.blit(rocket2, (r2.x, r2.y))
+
     if r1_lives == 0:
         print("player 1 wins!!!!")
         pygame.quit()
