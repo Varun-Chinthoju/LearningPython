@@ -23,8 +23,10 @@ rocket_width = 55
 rocket_height = 40
 lives_height = 50
 lives_width = 50
+#images
 background = pygame.image.load("background.webp")
 background_img = pygame.transform.scale(background, (SCREENWIDTH, SCREENHEIGHT))
+
 r2_live1 = pygame.image.load("lives.jpeg")
 r2_l1 = pygame.transform.scale(r2_live1, (lives_width, lives_height))
 
