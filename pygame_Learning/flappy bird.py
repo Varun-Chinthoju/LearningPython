@@ -10,7 +10,7 @@ BGCOLOR = (50, 200, 255)
 screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
 font = pygame.font.SysFont("impact", 60)
 pygame.display.set_caption("Flappy Bird")
-mixer.music.set_volume(0.7) 
+mixer.music.set_volume(0.7)
 
 
 def draw_text(text, font, text_col, x, y):
@@ -31,19 +31,18 @@ class Player:
         self.fall_speed = 7
         self.gravity_rate = 1
         self.pressed = 0
-
+        self.proportional_speed = 7
     def update(self, pipes):
         dy = 0
         # keypresses
         key = pygame.key.get_pressed()
         if self.pressed == 0:
             self.rect.y = SCREENHEIGHT / 2
-        if key[pygame.K_SPACE]:
-            mixer.music.load("images/flap.mp3")       
-            mixer.music.play() 
-            self.vel_y = -10
+        if key[pygame.K_SPACE] or key[pygame.K_w] or key[pygame.K_UP]:
+            mixer.music.load("images/flap.mp3")
+            mixer.music.play()
+            self.vel_y = -self.proportional_speed
             self.pressed += 1
-
 
         # add gravity
         self.vel_y += self.gravity_rate
@@ -95,25 +94,10 @@ class Pipes:
         screen.blit(self.down_pipe_resized, (self.down_rect.x, self.down_rect.y))
 
         # Increase pipe velocity based on points
-        if self.points == 5:
-            self.pipe_vel = 7
-            player.fall_speed = 20
-        elif self.points == 10:
-            self.pipe_vel = 15
-            player.fall_speed = 25
-            player.gravity_rate = 2
-        elif self.points == 20:
-            self.pipe_vel = 30
-            player.fall_speed = 30
-            player.gravity_rate = 3
-        elif self.points == 50:
-            self.pipe_vel = 40
-            player.fall_speed = 35
-            player.gravity_rate = 4
-        elif self.points == 100:
-            self.pipe_vel = 45
-            player.fall_speed = 40
-            player.gravity_rate = 5
+        self.pipe_vel = 7 + self.points / 4
+        player.proportional_speed = 10 + self.points / 10 
+        player.gravity_rate = 1 + int(self.points / 10)
+        player.fall_speed = int(self.pipe_vel*1.5)
 
     def collide(self, player_rect):
         return self.up_rect.colliderect(player_rect) or self.down_rect.colliderect(
@@ -123,7 +107,7 @@ class Pipes:
     def reset_pipes(self):
         self.up_rect.x = SCREENWIDTH
         self.down_rect.x = SCREENWIDTH
-        self.up_rect.y = random.randint(-pipe_height + 200, int(-gap * 0.5))
+        self.up_rect.y = random.randint(-pipe_height + (4/10)*SCREENHEIGHT, int(-gap * 0.5))
         self.down_rect.y = self.up_rect.y + pipe_height + self.gap
         if self.up_rect.x > 100 + self.pipe_width:
             self.points += 1
