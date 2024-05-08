@@ -1,23 +1,32 @@
 import pygame, random, time
 from pygame.locals import *
+from pygame import mixer
 
+mixer.init()
 pygame.init()
 SCREENWIDTH = 800
-SCREENHEIGHT = 800 
+SCREENHEIGHT = 800
 BGCOLOR = (50, 200, 255)
 screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
-
+font = pygame.font.SysFont("impact", 60)
 pygame.display.set_caption("Flappy Bird")
+mixer.music.set_volume(0.7) 
+
+
+def draw_text(text, font, text_col, x, y):
+    img = font.render(text, True, text_col)
+    screen.blit(img, (x, y))
+
 
 class Player:
     def __init__(self, x, y):
-        self.player_img = pygame.image.load("images/fb.png")
-        self.image = pygame.transform.scale(self.player_img, (100, 100))
+        self.image = pygame.transform.scale(
+            pygame.image.load("images/fb.png"), (100, 100)
+        )
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.vel_y = 0
-        self.jumped = False  # Initialize jumped attribute
         self.collision = "False"
         self.fall_speed = 7
         self.gravity_rate = 1
@@ -28,14 +37,14 @@ class Player:
         # keypresses
         key = pygame.key.get_pressed()
         if self.pressed == 0:
-            self.rect.y = SCREENHEIGHT/2
-        if key[pygame.K_SPACE] and not self.jumped:
-            self.vel_y = -15
-            self.jumped = True
-            self.pressed +=1
+            self.rect.y = SCREENHEIGHT / 2
+        if key[pygame.K_SPACE]:
+            mixer.music.load("images/flap.mp3")       
+            mixer.music.play() 
+            self.vel_y = -10
+            self.pressed += 1
 
-        if not key[pygame.K_SPACE]:
-            self.jumped = False
+
         # add gravity
         self.vel_y += self.gravity_rate
         if self.vel_y > self.fall_speed:
@@ -53,6 +62,7 @@ class Player:
             self.rect.y = SCREENHEIGHT - 70
         elif self.rect.y <= 0:
             self.rect.y = 0
+
         screen.blit(self.image, (self.rect.x, self.rect.y))
 
 
@@ -83,7 +93,7 @@ class Pipes:
             self.reset_pipes()
         screen.blit(self.up_pipe_resized, (self.up_rect.x, self.up_rect.y))
         screen.blit(self.down_pipe_resized, (self.down_rect.x, self.down_rect.y))
-        
+
         # Increase pipe velocity based on points
         if self.points == 5:
             self.pipe_vel = 7
@@ -102,22 +112,21 @@ class Pipes:
             player.gravity_rate = 4
         elif self.points == 100:
             self.pipe_vel = 45
-            player.fall_speed = 40 
+            player.fall_speed = 40
             player.gravity_rate = 5
-
-    def reset_pipes(self):
-        self.up_rect.x = SCREENWIDTH
-        self.down_rect.x = SCREENWIDTH
-        self.up_rect.y = random.randint(-pipe_height, int(-gap))
-        self.down_rect.y = self.up_rect.y + pipe_height + self.gap
-        self.points += 1
-
-
 
     def collide(self, player_rect):
         return self.up_rect.colliderect(player_rect) or self.down_rect.colliderect(
             player_rect
         )
+
+    def reset_pipes(self):
+        self.up_rect.x = SCREENWIDTH
+        self.down_rect.x = SCREENWIDTH
+        self.up_rect.y = random.randint(-pipe_height + 200, int(-gap * 0.5))
+        self.down_rect.y = self.up_rect.y + pipe_height + self.gap
+        if self.up_rect.x > 100 + self.pipe_width:
+            self.points += 1
 
 
 # Example usage:
@@ -137,7 +146,7 @@ def main():
     FPS = 60
     running = True
     clock = pygame.time.Clock()
-    countdown_ms = 17  # milliseconds
+    countdown_ms = 17
     ms_100_timer = pygame.USEREVENT + 1
     pygame.time.set_timer(ms_100_timer, countdown_ms)
     while running:
@@ -145,10 +154,14 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                exit()
             if event.type == ms_100_timer:
                 screen.fill(BGCOLOR)
                 pipes.update(player)
                 player.update(pipes)
+                draw_text(
+                    str(pipes.points), font, (255, 255, 255), int(SCREENWIDTH / 2), 30
+                )
 
         pygame.display.update()
     pygame.quit()
