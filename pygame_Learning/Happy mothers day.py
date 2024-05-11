@@ -45,18 +45,18 @@ while running:
         rotation_angle = total_elapsed_time / total_rotation_time * rotation_step * rotation_direction
 
         if rotation_stage == 1:
-            current_image = pygame.transform.rotate(box, 20)
+            current_image = pygame.transform.rotate(box, rotation_angle*5)
             if total_elapsed_time >= total_rotation_time:
                 total_elapsed_time = 0 
                 rotation_stage = 2  
         elif rotation_stage == 2:
-            current_image = pygame.transform.rotate(box, -20)
+            current_image = pygame.transform.rotate(box, -rotation_angle*5)
             if total_elapsed_time >= total_rotation_time:
                 total_elapsed_time = 0  
                 rotation_stage = 3  
                 rotation_direction *= -1  
         else:  
-            current_image = pygame.transform.rotate(box, 20)
+            current_image = pygame.transform.rotate(box, rotation_angle*2.5)
             if total_elapsed_time >= total_rotation_time:
                 is_clicked = False  
                 rotation_stage = 1  
