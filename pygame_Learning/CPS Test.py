@@ -40,11 +40,11 @@ while running:
         screen.blit(text_surface, (width // 2 - text_surface.get_width() // 2, height // 2))
         pygame.display.flip()
 
-        while True:
+        while running:
             for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
+                if event.type == pygame.QUIT:
                     running = False
-                    break
+                    exit()
 
     screen.fill(BLACK)
 
