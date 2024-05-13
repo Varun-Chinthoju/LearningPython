@@ -107,7 +107,7 @@ class Pipes:
     def reset_pipes(self):
         self.up_rect.x = SCREENWIDTH
         self.down_rect.x = SCREENWIDTH
-        self.up_rect.y = random.randint(-pipe_height + (4/10)*SCREENHEIGHT, int(-gap * 0.5))
+        self.up_rect.y = random.randint(int(-pipe_height + (4/10)*SCREENHEIGHT), int(-gap * 0.5))
         self.down_rect.y = self.up_rect.y + pipe_height + self.gap
         if self.up_rect.x > 100 + self.pipe_width:
             self.points += 1
