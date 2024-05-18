@@ -23,6 +23,6 @@ def find_iqr_quartiles(numbers):
 
   return {"IQR": IQR, "Q1": Q1, "Q3": Q3}
 
-numbers = [1, 2, 3, 3, 5, 7, 8, 9]
+numbers = [65, 63, 63, 61, 59, 58, 60, 64, 49, 61, 62, 67]
 results = find_iqr_quartiles(numbers)
 print(results)
