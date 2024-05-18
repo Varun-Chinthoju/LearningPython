@@ -1,3 +1,4 @@
+#median
 def find_mad(numbers):
     if not numbers:
         raise ValueError("Input list cannot be empty")
@@ -23,6 +24,6 @@ def find_mad(numbers):
     return mad
 
 
-numbers = [1, 2, 3, 3, 5, 7, 8, 9]
+numbers = [65, 63, 63, 61, 59, 58, 60, 64, 49, 61, 62, 67]
 mad_value = find_mad(numbers)
 print(f"Median Absolute Deviation (MAD): {mad_value}")
