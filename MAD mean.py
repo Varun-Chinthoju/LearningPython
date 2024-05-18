@@ -6,4 +6,4 @@ def mad(data):
     return mad
 
 data = [75, 2, 483, 58, 5, 66, 537, 8, 987]
-print(mad(data))
+print("MAD = ",mad(data))
