@@ -2,7 +2,7 @@ import random
 import string
 import os
 
-os.system("cls" if os.name == "nt" else "clear")
+os.system("cls" if os.name == "nt" else "clear") 
 
 
 def generate_password(
@@ -24,5 +24,5 @@ def generate_password(
     return password
 
 
-password = generate_password(8, punctuation=False)
+password = generate_password(12)
 print(password)
