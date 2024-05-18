@@ -1,5 +1,8 @@
 import random
 import string
+import os
+
+os.system("cls" if os.name == "nt" else "clear")
 
 
 def generate_password(
