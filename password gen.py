@@ -2,15 +2,18 @@ import random
 import string
 import os
 
-os.system("cls" if os.name == "nt" else "clear") #clears terminal before inputting password
+# first checks if
+os.system(
+    "cls" if os.name == "nt" else "clear"
+)  # clears terminal before inputting password
 
 
 def generate_password(
     length=8, lowercase=True, uppercase=True, digits=True, punctuation=True
 ):
-#password string
+    # password string
     all_chars = ""
-#makes the password
+    # makes the password
     if lowercase:
         all_chars += string.ascii_lowercase
     if uppercase:
@@ -19,10 +22,16 @@ def generate_password(
         all_chars += string.digits
     if punctuation:
         all_chars += string.punctuation
-#joins the password
+    # joins the password
     password = "".join(random.sample(all_chars, length))
     return password
 
-#prints the password using parameters length, lowercase, uppercase, digits, and punctuation
-password = generate_password(12)
-print(password)
+
+# asks user if they want to generate a password until they deny
+while True:
+    response = input("Would you like to generate a password? (yes/no): ")
+    if response.lower() == "yes":
+        password = generate_password(12)
+        print(password)
+    elif response.lower() == "no":
+        exit()
