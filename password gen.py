@@ -35,3 +35,6 @@ while True:
         print(password)
     elif response.lower() == "no":
         exit()
+    else:
+        print("Invalid response. Please enter 'yes' or 'no'.")
+        continue
