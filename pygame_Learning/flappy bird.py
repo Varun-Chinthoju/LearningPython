@@ -32,6 +32,7 @@ class Player:
         self.gravity_rate = 1
         self.pressed = 0
         self.proportional_speed = 7
+
     def update(self, pipes):
         dy = 0
         # keypresses
@@ -95,9 +96,9 @@ class Pipes:
 
         # Increase pipe velocity based on points
         self.pipe_vel = 7 + self.points / 4
-        player.proportional_speed = 10 + self.points / 10 
+        player.proportional_speed = 10 + self.points / 10
         player.gravity_rate = 1 + int(self.points / 10)
-        player.fall_speed = int(self.pipe_vel*1.5)
+        player.fall_speed = int(self.pipe_vel * 1.5)
 
     def collide(self, player_rect):
         return self.up_rect.colliderect(player_rect) or self.down_rect.colliderect(
@@ -107,7 +108,9 @@ class Pipes:
     def reset_pipes(self):
         self.up_rect.x = SCREENWIDTH
         self.down_rect.x = SCREENWIDTH
-        self.up_rect.y = random.randint(int(-pipe_height + (4/10)*SCREENHEIGHT), int(-gap * 0.5))
+        self.up_rect.y = random.randint(
+            int(-pipe_height + (4 / 10) * SCREENHEIGHT), int(-gap * 0.5)
+        )
         self.down_rect.y = self.up_rect.y + pipe_height + self.gap
         if self.up_rect.x > 100 + self.pipe_width:
             self.points += 1
@@ -153,4 +156,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

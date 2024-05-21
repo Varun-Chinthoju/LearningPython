@@ -11,12 +11,12 @@ width = 600
 height = 400
 screen = pygame.display.set_mode((width, height))
 
-pygame.display.set_caption('CPS Test')
+pygame.display.set_caption("CPS Test")
 
 font = pygame.font.SysFont(None, 32)
 
 clicks = 0
-test_time = 1  
+test_time = 1
 start_time = 0
 
 
@@ -28,7 +28,7 @@ while running:
             exit()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if start_time == 0:  
+            if start_time == 0:
                 start_time = time.time()
             clicks += 1
 
@@ -37,7 +37,9 @@ while running:
         text = f"Your CPS: {cps:.2f}"
         text_surface = font.render(text, True, RED)
         screen.fill(BLACK)
-        screen.blit(text_surface, (width // 2 - text_surface.get_width() // 2, height // 2))
+        screen.blit(
+            text_surface, (width // 2 - text_surface.get_width() // 2, height // 2)
+        )
         pygame.display.flip()
 
         while running:

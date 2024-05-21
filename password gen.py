@@ -3,9 +3,10 @@ import string
 import os
 
 # first checks if
- # clears terminal before inputting password
-os.system("cls" if os.name == "nt" else "clear") 
+# clears terminal before inputting password
+os.system("cls" if os.name == "nt" else "clear")
 pw_count = 0
+
 
 def generate_password(
     length=8, lowercase=True, uppercase=True, digits=True, punctuation=True
@@ -25,6 +26,7 @@ def generate_password(
     password = "".join(random.sample(all_chars, length))
     return password
 
+
 print("Welcome to the password generator!")
 # asks user if they want to generate a password until they deny
 while True:
@@ -34,7 +36,7 @@ while True:
         response = input("Would you like to generate a new password? (yes/no): ")
     if response.lower() == "yes":
         os.system("cls" if os.name == "nt" else "clear")
-        pw_count+=1
+        pw_count += 1
         password = generate_password(12)
         print(password)
     elif response.lower() == "no":
