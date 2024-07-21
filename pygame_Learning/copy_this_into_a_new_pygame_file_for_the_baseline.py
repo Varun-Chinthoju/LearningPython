@@ -1,5 +1,7 @@
 import pygame
 from pygame.locals import *
+
+
 def main():
     SCREENWIDTH = 800
     SCREENHEIGHT = 600
@@ -17,6 +19,7 @@ def main():
                 running = False
         pygame.display.update()
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()
