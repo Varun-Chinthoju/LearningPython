@@ -41,7 +41,7 @@ while running:
             text_surface, (width // 2 - text_surface.get_width() // 2, height // 2)
         )
         pygame.display.flip()
-
+        # stop the user from clicking once
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
