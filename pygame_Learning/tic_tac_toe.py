@@ -38,24 +38,26 @@ def draw_board():
 def check_win():
     global game_over, winner
 
+    # Check rows
     for row in board:
         if row[0] == row[1] == row[2] and row[0] != "":
             winner = row[0]
             game_over = True
 
+    # Check columns
     for col in range(3):
         if board[0][col] == board[1][col] == board[2][col] and board[0][col] != "":
             winner = board[0][col]
             game_over = True
 
-    if (
-        board[0][0] == board[1][1] == board[2][2]
-        or board[0][2] == board[1][1] == board[2][0]
-    ) and board[1][1] != "":
+    # Check diagonals (Corrected)
+    if (board[0][0] == board[1][1] == board[2][2] and board[0][0] != "") or \
+       (board[0][2] == board[1][1] == board[2][0] and board[0][2] != ""):
         winner = board[1][1]
         game_over = True
 
-    if all(board[i][j] != "" for i in range(3) for j in range(3)):
+    # Check for a tie
+    if all(board[i][j] != "" for i in range(3) for j in range(3)) and not game_over:
         game_over = True
         winner = "Tie"
 
