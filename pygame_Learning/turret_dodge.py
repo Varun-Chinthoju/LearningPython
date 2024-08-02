@@ -27,6 +27,35 @@ yellow = (255, 255, 0)  # For fuel bar
 cyan = (0, 255, 255)   # For boost bar
 magenta = (255, 0, 255) # For shield bar
 
+# --- Game Settings ---
+difficulty = "medium"  # Default difficulty
+score = 0
+
+# --- Difficulty Settings ---
+difficulty_settings = {
+    "easy": {
+        "turret_spawn_rate": 4000,
+        "special_turret_spawn_rate": 15000,
+        "obstacle_spawn_rate": 2000,
+        "obstacle_acceleration": 0.03,
+        "max_obstacle_speed": 6,
+    },
+    "medium": {
+        "turret_spawn_rate": 3000,
+        "special_turret_spawn_rate": 10000,
+        "obstacle_spawn_rate": 1500,
+        "obstacle_acceleration": 0.05,
+        "max_obstacle_speed": 8,
+    },
+    "hard": {
+        "turret_spawn_rate": 2000,
+        "special_turret_spawn_rate": 7000,
+        "obstacle_spawn_rate": 1000,
+        "obstacle_acceleration": 0.08,
+        "max_obstacle_speed": 10,
+    },
+}
+
 # Player settings
 player_x = screen_width // 2
 player_y = screen_height - 100
@@ -57,7 +86,7 @@ shield_start_time = 0
 turret_size = 40
 turret_color = black
 turrets = []
-turret_spawn_rate = 2500  # Spawn every 3 seconds
+turret_spawn_rate = difficulty_settings[difficulty]["turret_spawn_rate"]  # Use difficulty settings
 last_turret_spawn = 0
 rocket_speed = 5
 rockets = []
@@ -70,7 +99,7 @@ turret_range = 500  # Maximum range for turrets to shoot
 special_turret_size = 50
 special_turret_color = blue
 special_turrets = []
-special_turret_spawn_rate = 7500  # Spawn every 10 seconds
+special_turret_spawn_rate = difficulty_settings[difficulty]["special_turret_spawn_rate"]  # Use difficulty settings
 last_special_turret_spawn = 0
 homing_missile_speed = 6
 homing_missiles = []
@@ -93,14 +122,14 @@ dent_depth = 10
 dents = []
 
 # Obstacle acceleration settings
-obstacle_acceleration = 0.05
-max_obstacle_speed = 8
+obstacle_acceleration = difficulty_settings[difficulty]["obstacle_acceleration"]  # Use difficulty settings
+max_obstacle_speed = difficulty_settings[difficulty]["max_obstacle_speed"]  # Use difficulty settings
 
 # Obstacle settings
 obstacle_size = 30
 obstacle_speed = 3
 obstacles = []
-obstacle_spawn_rate = 1500  # Spawn every 1.5 seconds
+obstacle_spawn_rate = difficulty_settings[difficulty]["obstacle_spawn_rate"]  # Use difficulty settings
 last_obstacle_spawn = 0
 
 # Extra life (falling heart) settings
@@ -144,8 +173,47 @@ boost_bar_y = jetpack_bar_y - bar_height - bar_margin
 shield_bar_x = jetpack_bar_x
 shield_bar_y = boost_bar_y - bar_height - bar_margin
 
+# --- Menu settings ---
+menu_font = pygame.font.Font(None, 50)
+title_text = menu_font.render("Turret Dodge", True, black)
+title_rect = title_text.get_rect(center=(screen_width // 2, screen_height // 4))
+
+easy_text = menu_font.render("Easy", True, black)
+easy_rect = easy_text.get_rect(center=(screen_width // 2, screen_height // 2 - 50))
+
+medium_text = menu_font.render("Medium", True, black)
+medium_rect = medium_text.get_rect(center=(screen_width // 2, screen_height // 2))
+
+hard_text = menu_font.render("Hard", True, black)
+hard_rect = hard_text.get_rect(center=(screen_width // 2, screen_height // 2 + 50))
+
+# --- Functions ---
+def reset_game():
+    global player_x, player_y, player_speed, player_vel_y, boost, jetpack_fuel, lives, shield_hits, has_shield, turrets, rockets, fuel_tokens, obstacles, extra_lives, last_turret_spawn, last_rocket_launch, last_fuel_token_spawn, last_obstacle_spawn, last_extra_life_spawn, score
+    player_x = screen_width // 2
+    player_y = screen_height - 100
+    player_speed = 0
+    player_vel_y = 0
+    boost = boost_amount
+    jetpack_fuel = 100
+    lives = 3
+    shield_hits = 5
+    has_shield = False
+    turrets = []
+    rockets = []
+    fuel_tokens = []
+    obstacles = []
+    extra_lives = []
+    last_turret_spawn = 0
+    last_rocket_launch = 0
+    last_fuel_token_spawn = 0
+    last_obstacle_spawn = 0
+    last_extra_life_spawn = 0
+    score = 0
+
 # Game loop
 running = True
+in_menu = True  # Start in the menu
 clock = pygame.time.Clock()
 
 while running:
@@ -156,23 +224,56 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and not is_jumping:
-                is_jumping = True
-                player_vel_y = -jump_height
-            if event.key == pygame.K_s and not has_shield:
-                has_shield = True
-                shield_start_time = current_time
+        if in_menu:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    if easy_rect.collidepoint(event.pos):
+                        difficulty = "easy"
+                        reset_game()
+                        in_menu = False
+                    elif medium_rect.collidepoint(event.pos):
+                        difficulty = "medium"
+                        reset_game()
+                        in_menu = False
+                    elif hard_rect.collidepoint(event.pos):
+                        difficulty = "hard"
+                        reset_game()
+                        in_menu = False
+        else:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and not is_jumping:
+                    is_jumping = True
+                    player_vel_y = -jump_height
+                if event.key == pygame.K_s and not has_shield:
+                    has_shield = True
+                    shield_start_time = current_time
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                distance_to_button = (
-                    (event.pos[0] - pause_button_x) ** 2 + (event.pos[1] - pause_button_y) ** 2
-                ) ** 0.5
-                if distance_to_button <= pause_button_radius:
-                    is_paused = not is_paused
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    distance_to_button = (
+                        (event.pos[0] - pause_button_x) ** 2 + (event.pos[1] - pause_button_y) ** 2
+                    ) ** 0.5
+                    if distance_to_button <= pause_button_radius:
+                        is_paused = not is_paused
 
     if is_paused:
+        continue
+
+    if in_menu:
+        # --- Draw menu ---
+        screen.fill(sky_blue)
+
+        # Draw clouds
+        for cloud in clouds:
+            screen.blit(cloud_image, (cloud[0], cloud[1]))
+
+        screen.blit(title_text, title_rect)
+        screen.blit(easy_text, easy_rect)
+        screen.blit(medium_text, medium_rect)
+        screen.blit(hard_text, hard_rect)
+
+        pygame.display.flip()
+        clock.tick(60)
         continue
 
     # --- Player Movement ---
@@ -228,6 +329,7 @@ while running:
         turret[1] += obstacle_speed
         if turret[1] > screen_height:
             turrets.remove(turret)
+            score += 1  # Increment score when a turret goes offscreen
 
         # Only launch rockets if enough time has passed since the last launch
         if current_time - last_rocket_launch > rocket_delay:
@@ -281,62 +383,9 @@ while running:
         if rocket[1] > screen_height:
             rockets.remove(rocket)
 
-    # --- Shield duration ---
-    if has_shield and current_time - shield_start_time > shield_duration:
-        has_shield = False
-        shield_hits = 5  # Reset shield hits
-
-    # --- Fuel token spawning and movement ---
-    if current_time - last_fuel_token_spawn > fuel_token_spawn_rate:
-        fuel_token_x = random.randint(0, screen_width - fuel_token_size)
-        fuel_tokens.append([fuel_token_x, -fuel_token_size])
-        last_fuel_token_spawn = current_time
-
-    for fuel_token in fuel_tokens[:]:
-        fuel_token[1] += obstacle_speed  # Fuel tokens move at obstacle speed
-        if fuel_token[1] > screen_height:
-            fuel_tokens.remove(fuel_token)
-
-        if (
-            player_x < fuel_token[0] + fuel_token_size
-            and player_x + player_size > fuel_token[0]
-            and player_y < fuel_token[1] + fuel_token_size
-            and player_y + player_size > fuel_token[1]
-        ):
-            jetpack_fuel = 100
-            fuel_tokens.remove(fuel_token)
-
-    # --- Extra life (falling heart) spawning ---
-    if current_time - last_extra_life_spawn > extra_life_spawn_rate:
-        extra_life_x = random.randint(0, screen_width - extra_life_size)
-        extra_lives.append([extra_life_x, -extra_life_size])
-        last_extra_life_spawn = current_time
-
-    # --- Extra life movement ---
-    for extra_life in extra_lives[:]:
-        extra_life[1] += extra_life_speed
-        if extra_life[1] > screen_height:
-            extra_lives.remove(extra_life)
-
-        # Check for collision with player
-        if (
-            player_x < extra_life[0] + extra_life_size
-            and player_x + player_size > extra_life[0]
-            and player_y < extra_life[1] + extra_life_size
-            and player_y + player_size > extra_life[1]
-        ):
-            lives += 1  # Add an extra life
-            extra_lives.remove(extra_life)
-
-    # --- Turret spawning ---
-    if current_time - last_turret_spawn > turret_spawn_rate:
-        turret_x = random.randint(0, screen_width - turret_size)
-        turrets.append([turret_x, -turret_size])
-        last_turret_spawn = current_time
-
     # --- Special turret spawning ---
     if current_time - last_special_turret_spawn > special_turret_spawn_rate:
-        if random.random() < special_turret_spawn_chance:  # Check for spawn chance
+        if random.random() < special_turret_spawn_chance:
             special_turret_x = random.randint(0, screen_width - special_turret_size)
             special_turrets.append([special_turret_x, -special_turret_size])
             last_special_turret_spawn = current_time
@@ -346,6 +395,7 @@ while running:
         special_turret[1] += obstacle_speed
         if special_turret[1] > screen_height:
             special_turrets.remove(special_turret)
+            score += 2  # Increment score by 2 for special turrets
 
         # Launch a homing missile
         if len(homing_missiles) < len(special_turrets):  # Only one missile per special turret
@@ -406,6 +456,65 @@ while running:
         obstacle[1] += obstacle[2]
         if obstacle[1] > screen_height:
             obstacles.remove(obstacle)
+
+        # Check for collision with player
+        if (
+            player_x < obstacle[0] + obstacle_size
+            and player_x + player_size > obstacle[0]
+            and player_y < obstacle[1] + obstacle_size
+            and player_y + player_size > obstacle[1]
+        ):
+            lives -= 1
+            obstacles.remove(obstacle)
+            if lives == 0:
+                running = False  # Game over
+
+    # --- Fuel token spawning and movement ---
+    if current_time - last_fuel_token_spawn > fuel_token_spawn_rate:
+        fuel_token_x = random.randint(0, screen_width - fuel_token_size)
+        fuel_tokens.append([fuel_token_x, -fuel_token_size])
+        last_fuel_token_spawn = current_time
+
+    for fuel_token in fuel_tokens[:]:
+        fuel_token[1] += obstacle_speed  # Fuel tokens move at obstacle speed
+        if fuel_token[1] > screen_height:
+            fuel_tokens.remove(fuel_token)
+
+        if (
+            player_x < fuel_token[0] + fuel_token_size
+            and player_x + player_size > fuel_token[0]
+            and player_y < fuel_token[1] + fuel_token_size
+            and player_y + player_size > fuel_token[1]
+        ):
+            jetpack_fuel = 100
+            fuel_tokens.remove(fuel_token)
+
+    # --- Extra life (falling heart) spawning ---
+    if current_time - last_extra_life_spawn > extra_life_spawn_rate:
+        extra_life_x = random.randint(0, screen_width - extra_life_size)
+        extra_lives.append([extra_life_x, -extra_life_size])
+        last_extra_life_spawn = current_time
+
+    # --- Extra life movement ---
+    for extra_life in extra_lives[:]:
+        extra_life[1] += extra_life_speed
+        if extra_life[1] > screen_height:
+            extra_lives.remove(extra_life)
+
+        # Check for collision with player
+        if (
+            player_x < extra_life[0] + extra_life_size
+            and player_x + player_size > extra_life[0]
+            and player_y < extra_life[1] + extra_life_size
+            and player_y + player_size > extra_life[1]
+        ):
+            lives += 1  # Add an extra life
+            extra_lives.remove(extra_life)
+
+    # --- Shield duration ---
+    if has_shield and current_time - shield_start_time > shield_duration:
+        has_shield = False
+        shield_hits = 5  # Reset shield hits
 
     # --- Ground Scrolling ---
     ground_scroll_speed = -player_speed
@@ -500,6 +609,10 @@ while running:
     shield_bar_fill = (shield_hits / 5) * bar_width
     pygame.draw.rect(screen, black, (shield_bar_x, shield_bar_y, bar_width, bar_height))  # Background
     pygame.draw.rect(screen, magenta, (shield_bar_x, shield_bar_y, shield_bar_fill, bar_height))  # Fill
+
+    # Draw score
+    score_text = menu_font.render("Score: " + str(score), True, black)
+    screen.blit(score_text, (10, 50))  # Display score at top-left
 
     # Update the display
     pygame.display.flip()
