@@ -7,8 +7,14 @@ pygame.init()
 # Screen dimensions
 screen_width = 800
 screen_height = 600
-screen = pygame.display.set_mode((screen_width, screen_height))
+screen = pygame.display.set_mode((screen_width, screen_height))  # Initialize display first
 pygame.display.set_caption("Scrolling Ground with Jumping, Jetpack, and Turrets")
+
+# --- Image Loading ---  
+cloud_image = pygame.image.load("images/cloud.png").convert_alpha()
+cloud_image = pygame.transform.scale(cloud_image, (cloud_image.get_width() // 2, cloud_image.get_height() // 2))
+heart_image = pygame.image.load("images/lives.jpeg").convert()
+heart_image = pygame.transform.scale(heart_image, (heart_image.get_width() // 4, heart_image.get_height() // 4))
 
 # Colors
 white = (255, 255, 255)
@@ -17,6 +23,9 @@ blue = (0, 0, 255)
 green = (0, 255, 0)
 red = (255, 0, 0)
 sky_blue = (135, 206, 250)
+yellow = (255, 255, 0)  # For fuel bar
+cyan = (0, 255, 255)   # For boost bar
+magenta = (255, 0, 255) # For shield bar
 
 # Player settings
 player_x = screen_width // 2
@@ -39,6 +48,7 @@ jetpack_fuel = 100
 jetpack_consumption_rate = 2
 jetpack_power = 1.5
 lives = 3
+shield_hits = 5  # Shield can take 5 hits
 has_shield = False
 shield_duration = 5000  # 5 seconds
 shield_start_time = 0
@@ -51,6 +61,7 @@ turret_spawn_rate = 3000  # Spawn every 3 seconds
 last_turret_spawn = 0
 rocket_speed = 5
 rockets = []
+max_rockets_per_turret = 10  # Turrets can only shoot 10 rockets
 
 # Fuel token settings
 fuel_token_size = 20
@@ -66,7 +77,18 @@ ground_x = 0
 dent_width = 20
 dent_depth = 10
 dents = []
-obstacle_speed = 5
+
+# Obstacle acceleration settings
+obstacle_acceleration = 0.05
+max_obstacle_speed = 8
+
+# Obstacle settings
+obstacle_size = 30
+obstacle_speed = 3
+obstacles = []
+obstacle_spawn_rate = 1500  # Spawn every 1.5 seconds
+last_obstacle_spawn = 0
+
 # Create ground texture
 ground_texture = pygame.Surface((40, 40))
 ground_texture.fill(ground_color)
@@ -76,8 +98,6 @@ for x in range(0, 40, 5):
 ground_texture = pygame.transform.scale(ground_texture, (ground_texture.get_width() * 2, ground_texture.get_height() * 2))
 
 # Cloud settings
-cloud_image = pygame.image.load("images/cloud.png").convert_alpha()
-cloud_image = pygame.transform.scale(cloud_image, (cloud_image.get_width() // 2, cloud_image.get_height() // 2))
 cloud_speed = 1
 clouds = []
 for _ in range(5):
@@ -85,16 +105,23 @@ for _ in range(5):
     cloud_y = random.randint(-cloud_image.get_height(), 0)
     clouds.append([cloud_x, cloud_y])
 
-# Heart image for lives
-heart_image = pygame.image.load("images/lives.jpeg").convert_alpha()
-heart_image = pygame.transform.scale(heart_image, (heart_image.get_width() // 4, heart_image.get_height() // 4))
-
 # Pause button settings
 pause_button_radius = 20
 pause_button_color = red
 pause_button_x = screen_width - pause_button_radius - 10
 pause_button_y = pause_button_radius + 10
 is_paused = False
+
+# --- Bar settings ---
+bar_width = 150
+bar_height = 10
+bar_margin = 10
+jetpack_bar_x = bar_margin
+jetpack_bar_y = screen_height - bar_height - bar_margin
+boost_bar_x = jetpack_bar_x
+boost_bar_y = jetpack_bar_y - bar_height - bar_margin
+shield_bar_x = jetpack_bar_x
+shield_bar_y = boost_bar_y - bar_height - bar_margin
 
 # Game loop
 running = True
@@ -112,7 +139,7 @@ while running:
             if event.key == pygame.K_SPACE and not is_jumping:
                 is_jumping = True
                 player_vel_y = -jump_height
-            if event.key == pygame.K_s and not has_shield:  # Activate shield with 's' key
+            if event.key == pygame.K_s and not has_shield:
                 has_shield = True
                 shield_start_time = current_time
 
@@ -149,7 +176,6 @@ while running:
             player_speed += friction
 
     boost = min(boost + boost_regen_rate, boost_amount)
-
     player_speed = max(min(player_speed, max_speed), -max_speed)
     player_x += player_speed
 
@@ -171,8 +197,6 @@ while running:
         is_jumping = False
         dent_x = player_x - ground_x - dent_width // 2
         dents.append(dent_x)
-
-        # Replenish jetpack fuel when on the ground
         jetpack_fuel = min(jetpack_fuel + 5, 100)
 
     # --- Keep player within the screen bounds ---
@@ -184,22 +208,25 @@ while running:
         if turret[1] > screen_height:
             turrets.remove(turret)
 
-        # Calculate rocket travel time (1 second)
-        target_x = player_x + player_size // 2
-        target_y = player_y + player_size // 2
-        dx = target_x - (turret[0] + turret_size // 2)
-        dy = target_y - (turret[1] + turret_size // 2)
-        distance = math.hypot(dx, dy)
-        travel_time = distance / rocket_speed
-   # Launch a rocket
-        rockets.append(
-            [
-                turret[0] + turret_size // 2,
-                turret[1] + turret_size // 2,
-                dx / travel_time,
-                dy / travel_time,
-            ]
-        )
+        # Only launch rockets if the turret has rockets left
+        if len(rockets) < max_rockets_per_turret * len(turrets): 
+            # Calculate rocket travel time (1 second)
+            target_x = player_x + player_size // 2
+            target_y = player_y + player_size // 2
+            dx = target_x - (turret[0] + turret_size // 2)
+            dy = target_y - (turret[1] + turret_size // 2)
+            distance = math.hypot(dx, dy)
+            travel_time = distance / rocket_speed
+
+            # Launch a rocket
+            rockets.append(
+                [
+                    turret[0] + turret_size // 2,
+                    turret[1] + turret_size // 2,
+                    dx / travel_time,
+                    dy / travel_time,
+                ]
+            )
 
     for rocket in rockets[:]:
         rocket[0] += rocket[2]
@@ -211,15 +238,20 @@ while running:
             and player_y < rocket[1] < player_y + player_size
         ):
             if has_shield:
-                nearest_turret = min(turrets, key=lambda t: math.hypot(player_x - t[0], player_y - t[1])) 
+                shield_hits -= 1
+                if shield_hits == 0:
+                    has_shield = False
+                    shield_hits = 5  # Reset shield hits
+                rockets.remove(rocket)  # Remove rocket even if shield is active
+                # Find the nearest turret and remove it
+                nearest_turret = min(turrets, key=lambda t: math.hypot(player_x - t[0], player_y - t[1]))
                 if nearest_turret in turrets:
                     turrets.remove(nearest_turret)
-                has_shield = False
             else:
                 lives -= 1
                 if lives == 0:
                     running = False
-            rockets.remove(rocket)
+                rockets.remove(rocket)
 
         if rocket[1] > screen_height:
             rockets.remove(rocket)
@@ -227,6 +259,7 @@ while running:
     # --- Shield duration ---
     if has_shield and current_time - shield_start_time > shield_duration:
         has_shield = False
+        shield_hits = 5  # Reset shield hits
 
     # --- Fuel token spawning and movement ---
     if current_time - last_fuel_token_spawn > fuel_token_spawn_rate:
@@ -235,7 +268,7 @@ while running:
         last_fuel_token_spawn = current_time
 
     for fuel_token in fuel_tokens[:]:
-        fuel_token[1] += obstacle_speed
+        fuel_token[1] += obstacle_speed  # Fuel tokens move at obstacle speed
         if fuel_token[1] > screen_height:
             fuel_tokens.remove(fuel_token)
 
@@ -253,6 +286,19 @@ while running:
         turret_x = random.randint(0, screen_width - turret_size)
         turrets.append([turret_x, -turret_size])
         last_turret_spawn = current_time
+
+    # --- Obstacle spawning ---
+    if current_time - last_obstacle_spawn > obstacle_spawn_rate:
+        obstacle_x = random.randint(0, screen_width - obstacle_size)
+        obstacles.append([obstacle_x, -obstacle_size, obstacle_speed])  # Add initial speed
+        last_obstacle_spawn = current_time
+
+    # --- Obstacle movement ---
+    for obstacle in obstacles[:]:
+        obstacle[2] = min(obstacle[2] + obstacle_acceleration, max_obstacle_speed)
+        obstacle[1] += obstacle[2]
+        if obstacle[1] > screen_height:
+            obstacles.remove(obstacle)
 
     # --- Ground Scrolling ---
     ground_scroll_speed = -player_speed
@@ -290,6 +336,10 @@ while running:
     # Draw the grass (green rectangle)
     pygame.draw.rect(screen, green, (0, screen_height - ground_height, screen_width, ground_height))
 
+    # Draw obstacles
+    for obstacle in obstacles:
+        pygame.draw.rect(screen, red, (obstacle[0], obstacle[1], obstacle_size, obstacle_size))
+
     # Draw fuel tokens
     for fuel_token in fuel_tokens:
         pygame.draw.circle(screen, (255, 255, 0), (fuel_token[0] + fuel_token_size // 2, fuel_token[1] + fuel_token_size // 2),
@@ -315,6 +365,22 @@ while running:
 
     # Draw pause button
     pygame.draw.circle(screen, pause_button_color, (pause_button_x, pause_button_y), pause_button_radius)
+
+    # --- Draw bars ---
+    # Jetpack bar
+    jetpack_bar_fill = (jetpack_fuel / 100) * bar_width
+    pygame.draw.rect(screen, black, (jetpack_bar_x, jetpack_bar_y, bar_width, bar_height))  # Background
+    pygame.draw.rect(screen, yellow, (jetpack_bar_x, jetpack_bar_y, jetpack_bar_fill, bar_height))  # Fill
+
+    # Boost bar
+    boost_bar_fill = (boost / boost_amount) * bar_width
+    pygame.draw.rect(screen, black, (boost_bar_x, boost_bar_y, bar_width, bar_height))  # Background
+    pygame.draw.rect(screen, cyan, (boost_bar_x, boost_bar_y, boost_bar_fill, bar_height))  # Fill
+
+    # Shield bar
+    shield_bar_fill = (shield_hits / 5) * bar_width
+    pygame.draw.rect(screen, black, (shield_bar_x, shield_bar_y, bar_width, bar_height))  # Background
+    pygame.draw.rect(screen, magenta, (shield_bar_x, shield_bar_y, shield_bar_fill, bar_height))  # Fill
 
     # Update the display
     pygame.display.flip()
