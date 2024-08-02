@@ -8,7 +8,7 @@ pygame.init()
 screen_width = 800
 screen_height = 600
 screen = pygame.display.set_mode((screen_width, screen_height))  # Initialize display first
-pygame.display.set_caption("Scrolling Ground with Jumping, Jetpack, and Turrets")
+pygame.display.set_caption("Turret Dodge")
 
 # --- Image Loading ---  
 cloud_image = pygame.image.load("images/cloud.png").convert_alpha()
@@ -57,11 +57,25 @@ shield_start_time = 0
 turret_size = 40
 turret_color = black
 turrets = []
-turret_spawn_rate = 3000  # Spawn every 3 seconds
+turret_spawn_rate = 2500  # Spawn every 3 seconds
 last_turret_spawn = 0
 rocket_speed = 5
 rockets = []
 max_rockets_per_turret = 10  # Turrets can only shoot 10 rockets
+rocket_delay = 200  # Delay between rockets in milliseconds
+last_rocket_launch = 0
+turret_range = 500  # Maximum range for turrets to shoot
+
+# Special turret settings
+special_turret_size = 50
+special_turret_color = blue
+special_turrets = []
+special_turret_spawn_rate = 7500  # Spawn every 10 seconds
+last_special_turret_spawn = 0
+homing_missile_speed = 6
+homing_missiles = []
+homing_missile_lifetime = 2500  # 2 seconds in milliseconds
+special_turret_spawn_chance = 1/10  # 1 in 20 chance of spawning
 
 # Fuel token settings
 fuel_token_size = 20
@@ -88,6 +102,13 @@ obstacle_speed = 3
 obstacles = []
 obstacle_spawn_rate = 1500  # Spawn every 1.5 seconds
 last_obstacle_spawn = 0
+
+# Extra life (falling heart) settings
+extra_life_size = 30
+extra_life_speed = 2
+extra_lives = []
+extra_life_spawn_rate = 10000  # Spawn every 10 seconds
+last_extra_life_spawn = 0
 
 # Create ground texture
 ground_texture = pygame.Surface((40, 40))
@@ -208,25 +229,28 @@ while running:
         if turret[1] > screen_height:
             turrets.remove(turret)
 
-        # Only launch rockets if the turret has rockets left
-        if len(rockets) < max_rockets_per_turret * len(turrets): 
-            # Calculate rocket travel time (1 second)
-            target_x = player_x + player_size // 2
-            target_y = player_y + player_size // 2
-            dx = target_x - (turret[0] + turret_size // 2)
-            dy = target_y - (turret[1] + turret_size // 2)
-            distance = math.hypot(dx, dy)
-            travel_time = distance / rocket_speed
+        # Only launch rockets if enough time has passed since the last launch
+        if current_time - last_rocket_launch > rocket_delay:
+            # Only launch rockets if the turret has rockets left and is within range
+            if len(rockets) < max_rockets_per_turret * len(turrets) and math.hypot(player_x - turret[0], player_y - turret[1]) <= turret_range:
+                # Calculate rocket travel time (1 second)
+                target_x = player_x + player_size // 2
+                target_y = player_y + player_size // 2
+                dx = target_x - (turret[0] + turret_size // 2)
+                dy = target_y - (turret[1] + turret_size // 2)
+                distance = math.hypot(dx, dy)
+                travel_time = distance / rocket_speed
 
-            # Launch a rocket
-            rockets.append(
-                [
-                    turret[0] + turret_size // 2,
-                    turret[1] + turret_size // 2,
-                    dx / travel_time,
-                    dy / travel_time,
-                ]
-            )
+                # Launch a rocket
+                rockets.append(
+                    [
+                        turret[0] + turret_size // 2,
+                        turret[1] + turret_size // 2,
+                        dx / travel_time,
+                        dy / travel_time,
+                    ]
+                )
+                last_rocket_launch = current_time  # Update last rocket launch time
 
     for rocket in rockets[:]:
         rocket[0] += rocket[2]
@@ -244,9 +268,10 @@ while running:
                     shield_hits = 5  # Reset shield hits
                 rockets.remove(rocket)  # Remove rocket even if shield is active
                 # Find the nearest turret and remove it
-                nearest_turret = min(turrets, key=lambda t: math.hypot(player_x - t[0], player_y - t[1]))
-                if nearest_turret in turrets:
-                    turrets.remove(nearest_turret)
+                if turrets:  # Check if turrets list is not empty
+                    nearest_turret = min(turrets, key=lambda t: math.hypot(player_x - t[0], player_y - t[1]))
+                    if nearest_turret in turrets:
+                        turrets.remove(nearest_turret)
             else:
                 lives -= 1
                 if lives == 0:
@@ -281,11 +306,93 @@ while running:
             jetpack_fuel = 100
             fuel_tokens.remove(fuel_token)
 
+    # --- Extra life (falling heart) spawning ---
+    if current_time - last_extra_life_spawn > extra_life_spawn_rate:
+        extra_life_x = random.randint(0, screen_width - extra_life_size)
+        extra_lives.append([extra_life_x, -extra_life_size])
+        last_extra_life_spawn = current_time
+
+    # --- Extra life movement ---
+    for extra_life in extra_lives[:]:
+        extra_life[1] += extra_life_speed
+        if extra_life[1] > screen_height:
+            extra_lives.remove(extra_life)
+
+        # Check for collision with player
+        if (
+            player_x < extra_life[0] + extra_life_size
+            and player_x + player_size > extra_life[0]
+            and player_y < extra_life[1] + extra_life_size
+            and player_y + player_size > extra_life[1]
+        ):
+            lives += 1  # Add an extra life
+            extra_lives.remove(extra_life)
+
     # --- Turret spawning ---
     if current_time - last_turret_spawn > turret_spawn_rate:
         turret_x = random.randint(0, screen_width - turret_size)
         turrets.append([turret_x, -turret_size])
         last_turret_spawn = current_time
+
+    # --- Special turret spawning ---
+    if current_time - last_special_turret_spawn > special_turret_spawn_rate:
+        if random.random() < special_turret_spawn_chance:  # Check for spawn chance
+            special_turret_x = random.randint(0, screen_width - special_turret_size)
+            special_turrets.append([special_turret_x, -special_turret_size])
+            last_special_turret_spawn = current_time
+
+    # --- Special turret and homing missile movement ---
+    for special_turret in special_turrets[:]:
+        special_turret[1] += obstacle_speed
+        if special_turret[1] > screen_height:
+            special_turrets.remove(special_turret)
+
+        # Launch a homing missile
+        if len(homing_missiles) < len(special_turrets):  # Only one missile per special turret
+            target_x = player_x + player_size // 2
+            target_y = player_y + player_size // 2
+            dx = target_x - (special_turret[0] + special_turret_size // 2)
+            dy = target_y - (special_turret[1] + special_turret_size // 2)
+            distance = math.hypot(dx, dy)
+            travel_time = distance / homing_missile_speed
+
+            homing_missiles.append(
+                [
+                    special_turret[0] + special_turret_size // 2,
+                    special_turret[1] + special_turret_size // 2,
+                    dx / travel_time,
+                    dy / travel_time,
+                    current_time,  # Add launch time to track lifetime
+                ]
+            )
+
+    for missile in homing_missiles[:]:
+        # Update missile velocity to home in on the player
+        target_x = player_x + player_size // 2
+        target_y = player_y + player_size // 2
+        dx = target_x - missile[0]
+        dy = target_y - missile[1]
+        distance = math.hypot(dx, dy)
+        if distance > 0:  # Avoid division by zero
+            missile[2] = (dx / distance) * homing_missile_speed
+            missile[3] = (dy / distance) * homing_missile_speed
+
+        missile[0] += missile[2]
+        missile[1] += missile[3]
+
+        # Check for collision with player
+        if (
+            player_x < missile[0] < player_x + player_size
+            and player_y < missile[1] < player_y + player_size
+        ):
+            lives -= 2  # Homing missile takes two lives
+            if lives <= 0:
+                running = False
+            homing_missiles.remove(missile)
+
+        # Check for missile lifetime
+        if current_time - missile[4] > homing_missile_lifetime:
+            homing_missiles.remove(missile)
 
     # --- Obstacle spawning ---
     if current_time - last_obstacle_spawn > obstacle_spawn_rate:
@@ -349,9 +456,21 @@ while running:
     for turret in turrets:
         pygame.draw.rect(screen, turret_color, (turret[0], turret[1], turret_size, turret_size))
 
+    # Draw special turrets
+    for special_turret in special_turrets:
+        pygame.draw.rect(screen, special_turret_color, (special_turret[0], special_turret[1], special_turret_size, special_turret_size))
+
     # Draw rockets
     for rocket in rockets:
         pygame.draw.circle(screen, red, (int(rocket[0]), int(rocket[1])), 5)
+
+    # Draw homing missiles
+    for missile in homing_missiles:
+        pygame.draw.circle(screen, blue, (int(missile[0]), int(missile[1])), 8)  # Larger blue circle for homing missiles
+
+    # Draw extra lives (falling hearts)
+    for extra_life in extra_lives:
+        screen.blit(heart_image, (extra_life[0], extra_life[1]))
 
     # Draw hearts (lives)
     for i in range(lives):
