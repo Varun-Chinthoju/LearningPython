@@ -86,7 +86,6 @@ shield_start_time = 0
 turret_size = 40
 turret_color = black
 turrets = []
-turret_spawn_rate = difficulty_settings[difficulty]["turret_spawn_rate"]  # Use difficulty settings
 last_turret_spawn = 0
 rocket_speed = 5
 rockets = []
@@ -99,7 +98,6 @@ turret_range = 500  # Maximum range for turrets to shoot
 special_turret_size = 50
 special_turret_color = blue
 special_turrets = []
-special_turret_spawn_rate = difficulty_settings[difficulty]["special_turret_spawn_rate"]  # Use difficulty settings
 last_special_turret_spawn = 0
 homing_missile_speed = 6
 homing_missiles = []
@@ -122,14 +120,13 @@ dent_depth = 10
 dents = []
 
 # Obstacle acceleration settings
-obstacle_acceleration = difficulty_settings[difficulty]["obstacle_acceleration"]  # Use difficulty settings
-max_obstacle_speed = difficulty_settings[difficulty]["max_obstacle_speed"]  # Use difficulty settings
+obstacle_acceleration = 0.05
+max_obstacle_speed = 8
 
 # Obstacle settings
 obstacle_size = 30
 obstacle_speed = 3
 obstacles = []
-obstacle_spawn_rate = difficulty_settings[difficulty]["obstacle_spawn_rate"]  # Use difficulty settings
 last_obstacle_spawn = 0
 
 # Extra life (falling heart) settings
@@ -189,7 +186,7 @@ hard_rect = hard_text.get_rect(center=(screen_width // 2, screen_height // 2 + 5
 
 # --- Functions ---
 def reset_game():
-    global player_x, player_y, player_speed, player_vel_y, boost, jetpack_fuel, lives, shield_hits, has_shield, turrets, rockets, fuel_tokens, obstacles, extra_lives, last_turret_spawn, last_rocket_launch, last_fuel_token_spawn, last_obstacle_spawn, last_extra_life_spawn, score
+    global player_x, player_y, player_speed, player_vel_y, boost, jetpack_fuel, lives, shield_hits, has_shield, turrets, rockets, fuel_tokens, obstacles, extra_lives, last_turret_spawn, last_rocket_launch, last_fuel_token_spawn, last_obstacle_spawn, last_extra_life_spawn, score, turret_spawn_rate, special_turret_spawn_rate, obstacle_spawn_rate, obstacle_acceleration, max_obstacle_speed
     player_x = screen_width // 2
     player_y = screen_height - 100
     player_speed = 0
@@ -210,6 +207,12 @@ def reset_game():
     last_obstacle_spawn = 0
     last_extra_life_spawn = 0
     score = 0
+    # Update spawn rates and obstacle settings based on difficulty
+    turret_spawn_rate = difficulty_settings[difficulty]["turret_spawn_rate"]
+    special_turret_spawn_rate = difficulty_settings[difficulty]["special_turret_spawn_rate"]
+    obstacle_spawn_rate = difficulty_settings[difficulty]["obstacle_spawn_rate"]
+    obstacle_acceleration = difficulty_settings[difficulty]["obstacle_acceleration"]
+    max_obstacle_speed = difficulty_settings[difficulty]["max_obstacle_speed"]
 
 # Game loop
 running = True
