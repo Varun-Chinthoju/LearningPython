@@ -299,7 +299,6 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-
         if in_menu:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
@@ -468,15 +467,9 @@ while running:
 
     if player_death_explosion == True:
         if pygame.time.get_ticks() - start_time >= 1000:
-            x = True
-    if x:
-        screen.blit(end_score_text, ((screen_width / 2, screen_height / 2)))    
-            
-            
-            # in_menu = True
-            # player_death_explosion = False
-            # game_over = False
-            
+            in_menu = True
+            player_death_explosion = False
+            game_over = False
 
     # --- Keep player within the screen bounds ---
     player_x = max(0, min(player_x, screen_width - player_size))
