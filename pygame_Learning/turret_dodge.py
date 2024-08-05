@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import time
 
 pygame.init()
 
@@ -46,8 +47,8 @@ difficulty_settings = {
         "obstacle_spawn_rate": 2000,
         "obstacle_acceleration": 0.03,
         "max_obstacle_speed": 6,
-        "turret_speed": 2,
-        "lives": 7
+        "turret_speed": 4,
+        "lives": 7,
     },
     "medium": {
         "turret_spawn_rate": 3000,
@@ -56,7 +57,7 @@ difficulty_settings = {
         "obstacle_acceleration": 0.05,
         "max_obstacle_speed": 8,
         "turret_speed": 3,
-        "lives": 5
+        "lives": 5,
     },
     "hard": {
         "turret_spawn_rate": 2000,
@@ -64,25 +65,23 @@ difficulty_settings = {
         "obstacle_spawn_rate": 1000,
         "obstacle_acceleration": 0.08,
         "max_obstacle_speed": 10,
-        "turret_speed": 4,
-        "lives": 3
+        "turret_speed": 2,
+        "lives": 3,
     },
-    "hardcore": { # Added hardcore difficulty
+    "hardcore": {  # Added hardcore difficulty
         "turret_spawn_rate": 2000,
         "special_turret_spawn_rate": 7000,
         "obstacle_spawn_rate": 1000,
         "obstacle_acceleration": 0.08,
         "max_obstacle_speed": 10,
-        "turret_speed": 4,
-        "lives": 1
+        "turret_speed": 2,
+        "lives": 1,
     },
 }
 
 # --- Initialize spawn rates and obstacle settings based on difficulty ---
 turret_spawn_rate = difficulty_settings[difficulty]["turret_spawn_rate"]
-special_turret_spawn_rate = difficulty_settings[difficulty][
-    "special_turret_spawn_rate"
-]
+special_turret_spawn_rate = difficulty_settings[difficulty]["special_turret_spawn_rate"]
 obstacle_spawn_rate = difficulty_settings[difficulty]["obstacle_spawn_rate"]
 obstacle_acceleration = difficulty_settings[difficulty]["obstacle_acceleration"]
 max_obstacle_speed = difficulty_settings[difficulty]["max_obstacle_speed"]
@@ -105,8 +104,8 @@ fall_speed = 12
 player_vel_y = 0
 is_jumping = False
 jump_height = 15
-jetpack_fuel = 100
-jetpack_consumption_rate = 2
+jetpack_fuel = 70
+jetpack_consumption_rate = 1
 jetpack_power = 1.5
 lives = 3
 shield_hits = 5  # Shield can take 5 hits
@@ -125,7 +124,7 @@ max_rockets_per_turret = 50  # Turrets can only shoot 10 rockets
 rocket_delay = 100  # Delay between rockets in milliseconds
 last_rocket_launch = 0
 turret_range = 500  # Maximum range for turrets to shoot
-rocket_lifetime = 2000 # Rocket lasts 2 seconds
+rocket_lifetime = 2000  # Rocket lasts 2 seconds
 
 # Special turret settings
 special_turret_size = 50
@@ -189,7 +188,7 @@ pause_button_color = red
 pause_button_x = screen_width - pause_button_radius - 10
 pause_button_y = pause_button_radius + 10
 is_paused = False
-
+end_score = 0
 # --- Bar settings ---
 bar_width = 150
 bar_height = 10
@@ -203,7 +202,8 @@ shield_bar_y = boost_bar_y - bar_height - bar_margin
 
 # --- Menu settings ---
 menu_font = pygame.font.Font(None, 50)
-title_text = menu_font.render("Turret Dodge", True, black)
+title_font = pygame.font.Font(None, 75)
+title_text = title_font.render("Turret Dodge", True, black)
 title_rect = title_text.get_rect(center=(screen_width // 2, screen_height // 4))
 
 easy_text = menu_font.render("Easy", True, black)
@@ -215,8 +215,10 @@ medium_rect = medium_text.get_rect(center=(screen_width // 2, screen_height // 2
 hard_text = menu_font.render("Hard", True, black)
 hard_rect = hard_text.get_rect(center=(screen_width // 2, screen_height // 2))
 
-hardcore_text = menu_font.render("Hardcore", True, black) # Added hardcore mode to the menu
-hardcore_rect = hardcore_text.get_rect(center=(screen_width // 2, screen_height // 2 + 50))
+hardcore_text = menu_font.render("Hardcore", True, black)
+hardcore_rect = hardcore_text.get_rect(
+    center=(screen_width // 2, screen_height // 2 + 50)
+)
 
 
 # --- Functions ---
@@ -228,7 +230,7 @@ def reset_game():
     player_vel_y = 0
     boost = boost_amount
     jetpack_fuel = 100
-    lives = difficulty_settings[difficulty]["lives"] # Get lives from dictionary
+    lives = difficulty_settings[difficulty]["lives"]  # Get lives from dictionary
     shield_hits = 5
     has_shield = False
     turrets = []
@@ -252,8 +254,8 @@ def reset_game():
     max_obstacle_speed = difficulty_settings[difficulty]["max_obstacle_speed"]
     turret_speed = difficulty_settings[difficulty]["turret_speed"]
 
-    
-# --- Particle System --- 
+
+# --- Particle System ---
 class Particle:
     def __init__(self, x, y, color, size, lifetime, x_vel=0, y_vel=0):
         self.x = x
@@ -272,17 +274,18 @@ class Particle:
 
         self.x += self.x_vel
         self.y += self.y_vel
-        self.y_vel += 0.1 # Gravity effect on particles
+        self.y_vel += 0.2  # Gravity effect on particles
 
     def draw(self, screen):
         pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
 
-particles = [] 
-jetpack_particle_colors = [(255, 255, 0), (255, 165, 0)] # Yellow and orange
+
+particles = []
+jetpack_particle_colors = [(255, 255, 0), (255, 165, 0)]  # Yellow and orange
 
 # --- Game State ---
 game_over = False
-player_death_explosion = False 
+player_death_explosion = False
 
 # Game loop
 running = True
@@ -291,11 +294,11 @@ clock = pygame.time.Clock()
 
 while running:
     current_time = pygame.time.get_ticks()
-
     # --- Event handling ---
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
 
         if in_menu:
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -304,35 +307,42 @@ while running:
                         difficulty = "easy"
                         reset_game()
                         in_menu = False
+                        is_paused = False
                     elif medium_rect.collidepoint(event.pos):
                         difficulty = "medium"
                         reset_game()
                         in_menu = False
+                        is_paused = False
                     elif hard_rect.collidepoint(event.pos):
                         difficulty = "hard"
                         reset_game()
                         in_menu = False
-                    elif hardcore_rect.collidepoint(event.pos): # Add handling for hardcore button click
+                        is_paused = False
+                    elif hardcore_rect.collidepoint(
+                        event.pos
+                    ):  # Add handling for hardcore button click
                         difficulty = "hardcore"
                         reset_game()
                         in_menu = False
+                        is_paused = False
         else:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and not is_jumping:
-                    is_jumping = True
-                    player_vel_y = -jump_height
-                if event.key == pygame.K_s and not has_shield:
-                    has_shield = True
-                    shield_start_time = current_time
+            if not game_over:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE and not is_jumping:
+                        is_jumping = True
+                        player_vel_y = -jump_height
+                    if event.key == pygame.K_s and not has_shield:
+                        has_shield = True
+                        shield_start_time = current_time
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    distance_to_button = (
-                        (event.pos[0] - pause_button_x) ** 2
-                        + (event.pos[1] - pause_button_y) ** 2
-                    ) ** 0.5
-                    if distance_to_button <= pause_button_radius:
-                        is_paused = not is_paused
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        distance_to_button = (
+                            (event.pos[0] - pause_button_x) ** 2
+                            + (event.pos[1] - pause_button_y) ** 2
+                        ) ** 0.5
+                        if distance_to_button <= pause_button_radius:
+                            is_paused = not is_paused
 
     if is_paused:
         continue
@@ -342,14 +352,12 @@ while running:
         screen.fill(sky_blue)
 
         # Draw clouds
-        for cloud in clouds:
-            screen.blit(cloud_image, (cloud[0], cloud[1]))
 
         screen.blit(title_text, title_rect)
         screen.blit(easy_text, easy_rect)
         screen.blit(medium_text, medium_rect)
         screen.blit(hard_text, hard_rect)
-        screen.blit(hardcore_text, hardcore_rect) # Draw the hardcore option
+        screen.blit(hardcore_text, hardcore_rect)  # Draw the hardcore option
 
         pygame.display.flip()
         clock.tick(60)
@@ -357,49 +365,58 @@ while running:
 
     # --- Player Movement ---
     keys = pygame.key.get_pressed()
-
-    if keys[pygame.K_LEFT]:
-        if boost > 0 and keys[pygame.K_LSHIFT]:
-            player_speed -= acceleration * boost_multiplier
-            boost -= boost_regen_rate * 2
+    if not game_over:
+        if keys[pygame.K_LEFT]:
+            if boost > 0 and keys[pygame.K_LSHIFT]:
+                player_speed -= acceleration * boost_multiplier
+                boost -= boost_regen_rate * 2
+            else:
+                player_speed -= acceleration
+        elif keys[pygame.K_RIGHT]:
+            if boost > 0 and keys[pygame.K_LSHIFT]:
+                player_speed += acceleration * boost_multiplier
+                boost -= boost_regen_rate * 2
+            else:
+                player_speed += acceleration
         else:
-            player_speed -= acceleration
-    elif keys[pygame.K_RIGHT]:
-        if boost > 0 and keys[pygame.K_LSHIFT]:
-            player_speed += acceleration * boost_multiplier
-            boost -= boost_regen_rate * 2
-        else:
-            player_speed += acceleration
-    else:
-        if player_speed > 0:
-            player_speed -= friction
-        elif player_speed < 0:
-            player_speed += friction
+            if player_speed > 0:
+                player_speed -= friction
+            elif player_speed < 0:
+                player_speed += friction
 
     boost = min(boost + boost_regen_rate, boost_amount)
     player_speed = max(min(player_speed, max_speed), -max_speed)
     player_x += player_speed
 
     # --- Jetpack ---
-    if keys[pygame.K_j] and jetpack_fuel > 0:
+
+    if keys[pygame.K_j] and jetpack_fuel > 0 and not game_over:
         player_vel_y -= jetpack_power
         jetpack_fuel -= jetpack_consumption_rate
 
         # Create jetpack particles
-        for _ in range(3): 
+        for _ in range(3):
             particle_x = player_x + player_size // 2 + random.randint(-5, 5)
-            particle_y = player_y + player_size 
+            particle_y = player_y + player_size
             particle_color = random.choice(jetpack_particle_colors)
             particle_size = random.randint(3, 6)
             particle_lifetime = random.randint(20, 40)
-            particles.append(Particle(particle_x, particle_y, particle_color, particle_size, particle_lifetime)) 
+            particles.append(
+                Particle(
+                    particle_x,
+                    particle_y,
+                    particle_color,
+                    particle_size,
+                    particle_lifetime,
+                )
+            )
 
     # --- Gravity ---
-    if not game_over: # Only apply gravity if player is alive
-        player_vel_y += gravity
-        if player_vel_y > fall_speed:
-            player_vel_y = fall_speed
-        player_y += player_vel_y
+    # Only apply gravity if player is alive
+    player_vel_y += gravity
+    if player_vel_y > fall_speed:
+        player_vel_y = fall_speed
+    player_y += player_vel_y
 
     # --- Keep player on top of the ground ---
     if player_y + player_size > screen_height - ground_height:
@@ -412,19 +429,54 @@ while running:
 
         if game_over and not player_death_explosion:
             # Create explosion particles
-            for _ in range(100):
+            start_time = pygame.time.get_ticks()
+            if x == 0:
+                end_score = str(score)
+            for _ in range(175):
                 particle_x = player_x + player_size // 2 + random.randint(-20, 20)
                 particle_y = player_y + player_size // 2 + random.randint(-20, 20)
-                particle_color = gray
+                rand_color = random.randint(1, 3)
+                if rand_color == 1:
+                    particle_color = gray
+                elif rand_color == 2:
+                    particle_color = yellow
+                elif rand_color == 3:
+                    particle_color = red
                 particle_size = random.randint(5, 10)
-                particle_lifetime = random.randint(50, 100)
-                x_vel = random.randint(-5, 5)
-                y_vel = random.randint(-10, -5)
-                particles.append(
-                    Particle(particle_x, particle_y, particle_color, particle_size, particle_lifetime, x_vel, y_vel)
-                )
+                particle_lifetime = random.randint(30, 50)
+                x_vel = random.randint(-10, 10)
+                y_vel = random.randint(-10, -2)
 
+                particles.append(
+                    Particle(
+                        particle_x,
+                        particle_y,
+                        particle_color,
+                        particle_size,
+                        particle_lifetime,
+                        x_vel,
+                        y_vel,
+                    )
+                )
             player_death_explosion = True
+            end_score_text = title_font.render(
+                f"Your Final score is: {end_score}", True, black
+            )  # Added hardcore mode to the menu
+            end_score_rect = end_score_text.get_rect(
+                center=(screen_width // 2, screen_height // 2 + 50)
+            )
+
+    if player_death_explosion == True:
+        if pygame.time.get_ticks() - start_time >= 1000:
+            x = True
+    if x:
+        screen.blit(end_score_text, ((screen_width / 2, screen_height / 2)))    
+            
+            
+            # in_menu = True
+            # player_death_explosion = False
+            # game_over = False
+            
 
     # --- Keep player within the screen bounds ---
     player_x = max(0, min(player_x, screen_width - player_size))
@@ -435,12 +487,12 @@ while running:
         turrets.append([turret_x, -turret_size])
         last_turret_spawn = current_time
 
-# --- Turret and rocket movement ---
+    # --- Turret and rocket movement ---
     for turret in turrets[:]:
-        turret[1] += turret_speed 
+        turret[1] += turret_speed
         if turret[1] > screen_height:
             turrets.remove(turret)
-            # score += 1  
+            score += 1
 
         # Only launch rockets if enough time has passed since the last launch
         if current_time - last_rocket_launch > rocket_delay:
@@ -465,21 +517,21 @@ while running:
                         turret[1] + turret_size // 2,
                         dx / travel_time,
                         dy / travel_time,
-                        current_time # Track rocket launch time for lifetime
+                        current_time,  # Track rocket launch time for lifetime
                     ]
                 )
                 last_rocket_launch = current_time  # Update last rocket launch time
 
         # --- Score Increment (Moved) ---
-        if 0 <= turret[1] <= screen_height: # Only give points for on-screen turrets
-            score += 1 
+        # if 0 <= turret[1] <= screen_height:  # Only give points for on-screen turrets
+        #     score += 1
 
     for rocket in rockets[:]:
         rocket[0] += rocket[2]
         rocket[1] += rocket[3]
 
         # Check for rocket lifetime
-        if current_time - rocket[4] > rocket_lifetime: 
+        if current_time - rocket[4] > rocket_lifetime:
             rockets.remove(rocket)
             # Create explosion particles
             for _ in range(30):
@@ -491,8 +543,16 @@ while running:
                 x_vel = random.randint(-3, 3)
                 y_vel = random.randint(-3, 3)
                 particles.append(
-                    Particle(particle_x, particle_y, particle_color, particle_size, particle_lifetime, x_vel, y_vel)
-                ) 
+                    Particle(
+                        particle_x,
+                        particle_y,
+                        particle_color,
+                        particle_size,
+                        particle_lifetime,
+                        x_vel,
+                        y_vel,
+                    )
+                )
             continue
 
         # Check for collision with player
@@ -517,12 +577,12 @@ while running:
             else:
                 lives -= 1
                 if lives == 0:
-                    game_over = True # Trigger game over
+                    game_over = True  # Trigger game over
                 rockets.remove(rocket)
 
-        if rocket[1] > screen_height: 
+        if rocket[1] > screen_height:
             rockets.remove(rocket)
-            # Create explosion particles 
+            # Create explosion particles
             for _ in range(30):
                 particle_x = rocket[0] + random.randint(-10, 10)
                 particle_y = rocket[1] + random.randint(-10, 10)
@@ -532,7 +592,15 @@ while running:
                 x_vel = random.randint(-3, 3)
                 y_vel = random.randint(-3, 3)
                 particles.append(
-                    Particle(particle_x, particle_y, particle_color, particle_size, particle_lifetime, x_vel, y_vel)
+                    Particle(
+                        particle_x,
+                        particle_y,
+                        particle_color,
+                        particle_size,
+                        particle_lifetime,
+                        x_vel,
+                        y_vel,
+                    )
                 )
 
     # --- Special turret spawning ---
@@ -772,7 +840,7 @@ while running:
         screen.blit(heart_image, (extra_life[0], extra_life[1]))
 
     # --- Update and Draw Particles ---
-    for particle in particles[:]: # Iterate over a copy of the list
+    for particle in particles[:]:  # Iterate over a copy of the list
         particle.update()
         if particle.alive:
             particle.draw(screen)
@@ -784,7 +852,10 @@ while running:
         screen.blit(heart_image, (10 + i * (heart_image.get_width() + 5), 10))
 
     # Draw the player
-    pygame.draw.rect(screen, blue, (player_x, player_y, player_size, player_size)) # Draw the player even after game over
+    if not game_over:
+        pygame.draw.rect(
+            screen, blue, (player_x, player_y, player_size, player_size)
+        )  # Draw the player even after game over
     if has_shield:
         pygame.draw.circle(
             screen,
