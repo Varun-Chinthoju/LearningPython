@@ -446,8 +446,8 @@ while running:
                     particle_color = yellow
                 elif rand_color == 3:
                     particle_color = red
-                particle_size = random.randint(5, 10)
-                particle_lifetime = random.randint(30, 50)
+                particle_size = random.randint(5, 20)
+                particle_lifetime = random.randint(30, 100)
                 x_vel = random.randint(-10, 10)
                 y_vel = random.randint(-10, -2)
 
