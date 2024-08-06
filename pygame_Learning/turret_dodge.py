@@ -281,7 +281,12 @@ class Particle:
 
 
 particles = []
-jetpack_particle_colors = [(255, 255, 0), (255, 165, 0)]  # Yellow and orange
+jetpack_particle_colors = [
+    (255, 255, 0),
+    (255, 165, 0),
+    (128, 128, 128),
+    (255, 0, 0),
+]  # Yellow and orange
 
 # --- Game State ---
 game_over = False
