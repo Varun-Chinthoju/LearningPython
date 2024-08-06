@@ -106,7 +106,7 @@ is_jumping = False
 jump_height = 15
 jetpack_fuel = 70
 jetpack_consumption_rate = 1
-jetpack_power = 1.5
+jetpack_power = 1.25
 lives = 3
 shield_hits = 5  # Shield can take 5 hits
 has_shield = False
@@ -128,7 +128,7 @@ rocket_lifetime = 2000  # Rocket lasts 2 seconds
 
 # Special turret settings
 special_turret_size = 50
-special_turret_color = blue
+special_turret_color = yellow
 special_turrets = []
 last_special_turret_spawn = 0
 homing_missile_speed = 6
