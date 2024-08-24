@@ -7,13 +7,14 @@ import random
 pygame.init()
 
 # Screen dimensions
-WIDTH, HEIGHT = 2500, 1500
+WIDTH, HEIGHT = 2000, 1500
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drift Chase")
 
 # Colors
 WHITE = (255, 255, 255)
 GRAY = (50, 50, 50)  # Color for drift tracks
+RED = (255, 0, 0)  # Color for explosion
 
 # Clock
 clock = pygame.time.Clock()
@@ -29,16 +30,14 @@ police_image = pygame.transform.scale(pygame.image.load('images//police car.png'
 player_x, player_y = WIDTH // 2, HEIGHT // 2
 player_speed = 0
 player_angle = 0
-player_turn_angle = 0
+turning_radius = 20  # Turning radius in pixels
 acceleration = 0.2
 friction = 0.05
-rotation_speed = 2
-max_turn_angle = 20  # Max turn angle in degrees
 
 # Police car settings
 police_speed = 2
+police_turning_radius = 20  # Turning radius in pixels
 police_cars = []
-police_turn_angle = 0
 
 # List to store drift tracks
 drift_tracks = []
@@ -47,7 +46,8 @@ drift_tracks = []
 def spawn_police():
     police_x = random.choice([0, WIDTH - car_width])  # Spawn on the left or right edge
     police_y = random.randint(0, HEIGHT - car_height)  # Random y-coordinate
-    police_cars.append([police_x, police_y, 0])  # Add police car with initial angle 0
+    police_angle = random.randint(0, 360)  # Random initial angle
+    police_cars.append([police_x, police_y, police_angle, police_speed])  # Add police car with initial angle and speed
 
 # Rotate and center image
 def rotate_center(image, rect, angle):
@@ -58,29 +58,23 @@ def rotate_center(image, rect, angle):
 
 # Police car AI: Chase the player
 def move_police(police_pos, player_x, player_y):
-    police_x, police_y, police_angle = police_pos
-
-    # Calculate direction toward player
-    dx, dy = player_x - police_x, player_y - police_y
-    distance = math.hypot(dx, dy)
-    
-    if distance > 0:
-        dx, dy = dx / distance, dy / distance  # Normalize direction
-
-    # Move police car toward player
-    police_x += dx * police_speed
-    police_y += dy * police_speed
+    police_x, police_y, police_angle, police_speed = police_pos
 
     # Update police car angle
-    target_angle = math.degrees(math.atan2(-dy, dx))
-    police_angle = (police_angle + (target_angle - police_angle) * 0.05) % 360
+    target_angle = math.degrees(math.atan2(player_y - police_y, player_x - police_x))
+    police_angle = (police_angle + (target_angle - police_angle) * 0.1) % 360  # Gradually update angle
 
-    # Limit police car turn angle
-    police_turn_angle = max(-max_turn_angle, min(max_turn_angle, target_angle - police_angle))
+    # Move police car
+    police_x += -police_speed * math.cos(math.radians(police_angle))
+    police_y += -police_speed * math.sin(math.radians(police_angle))
 
-    return [police_x, police_y, police_angle]
+    # Increase police speed
+    police_speed += 1
+    if police_speed > 10:
+        police_speed = 10
 
-# Collision detection between two rectangles
+    return [police_x, police_y, police_angle, police_speed]
+
 def detect_collision(rect1, rect2):
     return rect1.colliderect(rect2)
 
@@ -96,28 +90,32 @@ while running:
 
     # Get keys for player movement
     keys = pygame.key.get_pressed()
-
+    # Draw the drift tracks
+    for track in drift_tracks:
+        drift_x, drift_y, drift_angle = track
+        # Small rectangle to represent the tire marks
+        track_rect = pygame.Rect(drift_x, drift_y, 5, 20)
+        
     # Player rotation
-    if keys[pygame.K_LEFT] and player_speed > 0:
-        player_turn_angle = max(-max_turn_angle, player_turn_angle - rotation_speed)
-    if keys[pygame.K_RIGHT] and player_speed > 0:
-        player_turn_angle = min(max_turn_angle, player_turn_angle + rotation_speed)
+    if keys[pygame.K_LEFT] and abs(player_speed) > 0:
+        player_angle += (player_speed / turning_radius) * (2000 / math.pi) / 60
+        pygame.draw.rect(screen, GRAY, track_rect)  # 60 FPS
+    if keys[pygame.K_RIGHT] and abs(player_speed) > 0:
+        player_angle -= (player_speed / turning_radius) * (2000 / math.pi) / 60
+        pygame.draw.rect(screen, GRAY, track_rect)  # 60 FPS
 
     # Player acceleration/deceleration
     if keys[pygame.K_UP]:
-        player_speed += acceleration
-    if keys[pygame.K_DOWN]:
         player_speed -= acceleration
+    if keys[pygame.K_DOWN]:
+        player_speed += acceleration
 
     # Apply friction to player
     player_speed *= (1 - friction)
 
-    # Update player angle based on turn angle
-    player_angle = (player_angle + player_turn_angle * 0.05) % 360
-
     # Calculate player movement based on angle
-    player_x += player_speed * math.cos(math.radians(player_angle))
-    player_y -= player_speed * math.sin(math.radians(player_angle))
+    player_x += player_speed * math.sin(math.radians(player_angle))
+    player_y -= player_speed * math.cos(math.radians(player_angle))
 
     # Keep player within screen bounds
     player_x = max(0, min(player_x, WIDTH - car_width))
@@ -130,16 +128,11 @@ while running:
     if len(drift_tracks) > 50:
         drift_tracks.pop(0)
 
-    # Draw the drift tracks
-    for track in drift_tracks:
-        drift_x, drift_y, drift_angle = track
-        # Small rectangle to represent the tire marks
-        track_rect = pygame.Rect(drift_x, drift_y, 5, 20)
-        pygame.draw.rect(screen, GRAY, track_rect)
+
 
     # Rotate and draw the player car
     player_rect = pygame.Rect(player_x, player_y, car_width, car_height)
-    rotated_player, rotated_player_rect = rotate_center(player_image, player_rect, -player_angle)
+    rotated_player, rotated_player_rect = rotate_center(player_image, player_rect, -player_angle + 90)
     screen.blit(rotated_player, rotated_player_rect.topleft)
 
     # Spawn police cars periodically
@@ -168,6 +161,19 @@ while running:
             print("Game Over!")
             pygame.quit()
             sys.exit()
+
+        # Check for collision with other police cars
+        for j, other_police_pos in enumerate(police_cars):
+            if i != j:  # Don't check collision with itself
+                other_police_collision_rect = pygame.Rect(other_police_pos[0] + car_width // 4, other_police_pos[1] + car_height // 4, car_width // 2, car_height // 2)
+                if detect_collision(police_collision_rect, other_police_collision_rect):
+                    # Draw explosion effect
+                    explosion_rect = pygame.Rect(police_pos[0], police_pos[1], car_width, car_height)
+                    pygame.draw.rect(screen, RED, explosion_rect)
+
+                    # Remove police cars that collided
+                    police_cars.pop(i)
+                    police_cars.pop(j - 1)  # Adjust index since we removed an item
 
     pygame.display.flip()
     clock.tick(60)
