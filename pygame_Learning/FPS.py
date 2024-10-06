@@ -1,184 +1,431 @@
 import pygame
-import random
+import sys
 import math
+import random
 
 # Initialize Pygame
 pygame.init()
 
-# Screen dimensions
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-# Colors
+# Constants
+WIDTH, HEIGHT = 1000, 800
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
-GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
+GRAY = (128, 128, 128)
+FPS = 60
 
-# Player properties
-PLAYER_SIZE = 20
-PLAYER_SPEED = 5
+# Set up the display
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-# Enemy properties
-ENEMY_SIZE = 20
-ENEMY_SPEED = 2
 
-# Gun properties
-GUN_FIRE_RATE = 1
+class Player:
+    def __init__(self):
+        self.x = WIDTH / 2
+        self.y = HEIGHT / 2
+        self.speed = 5
+        self.direction = None
+        self.gun = 1
+        self.health = 100
+        self.color = RED
+        self.kills = 0
+        self.round = 1
+        self.mines = []
+        self.drones = []
+        self.walls = []
+        self.bullet_streams = []
+
+    def move(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w] and self.y > 0:
+            self.y -= self.speed
+        if keys[pygame.K_s] and self.y < HEIGHT - 20:
+            self.y += self.speed
+        if keys[pygame.K_a] and self.x > 0:
+            self.x -= self.speed
+        if keys[pygame.K_d] and self.x < WIDTH - 20:
+            self.x += self.speed
+
+
+class Enemy:
+    def __init__(self):
+        self.x = random.randint(0, WIDTH - 20)
+        self.y = random.randint(0, HEIGHT - 20)
+        self.speed = random.uniform(1, 3)
+        self.hits = random.randint(1, 5)  # Varying number of hits
+        self.color = (255, 0, 0)  # Red color for zombies
+
+    def move(self, player):
+        dx = player.x - self.x
+        dy = player.y - self.y
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            dx /= dist
+            dy /= dist
+            self.x += dx * self.speed
+            self.y += dy * self.speed
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, self.color, (self.x, self.y, 20, 20))
+        # Display hits remaining
+        font = pygame.font.Font(None, 24)
+        text = font.render(str(self.hits), 1, (255, 255, 255))
+        screen.blit(text, (self.x + 5, self.y + 5))
+
+
+class Bullet:
+    def __init__(self, x, y, angle, speed):
+        self.x = x
+        self.y = y
+        self.speed = speed
+        self.angle = angle
+
+    def move(self):
+        self.x += math.cos(self.angle) * self.speed
+        self.y += math.sin(self.angle) * self.speed
+
+
+class Mine:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.radius = 50
+
+
+class Drone:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.speed = 500
+        self.bullets = []
+        self.angle = 0
+        self.gun_cooldown = 0
+        self.shoot_delay = 1000
+        self.last_shot_time = 0
+
+    def move(self, player, enemies, delta_time):
+        # Move towards player
+        dx = player.x - self.x
+        dy = player.y - self.y
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            dx /= dist
+            dy /= dist
+            self.x += dx * self.speed * delta_time / 1000
+            self.y += dy * self.speed * delta_time / 1000
+
+
+class Wall:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 100
+        self.height = 100
+        self.health = 500
+
+
+class BulletStream:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.bullets = []
+
+    def update(self):
+        pass
+
 
 class Game:
     def __init__(self):
-        self.player = {"x": SCREEN_WIDTH / 2, "y": SCREEN_HEIGHT / 2, "gun": {"name": "Pistol", "unlocks_at": 0, "damage": 1, "fire_rate": 1}, "kills": 0, "walls": [], "health": 100, "level": 1, "xp": 0}
-        self.enemies = []
-        self.guns = [
-            {"name": "Pistol", "unlocks_at": 0, "damage": 1, "fire_rate": 1},
-            {"name": "Rifle", "unlocks_at": 100, "damage": 2, "fire_rate": 0.5},
-            {"name": "Shotgun", "unlocks_at": 500, "damage": 3, "fire_rate": 0.2},
-            {"name": "Sniper", "unlocks_at": 2000, "damage": 5, "fire_rate": 0.1},
-            {"name": "Assault Rifle", "unlocks_at": 3000, "damage": 0.5, "fire_rate": 5},
-            {"name": "Laser", "unlocks_at": 5000, "damage": 0.2, "fire_rate": 10}
-        ]
+        self.player = Player()
+        self.enemies = [Enemy() for _ in range(50)]
         self.bullets = []
-        self.mines = []
-        self.drones = []
-        self.power_ups = []
+        self.gun_cooldown = 0
+        self.mouse_down = False
+        self.last_update_time = pygame.time.get_ticks()
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEMOTION:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                dx = mouse_x - self.player.x
+                dy = mouse_y - self.player.y
+                self.player.direction = math.atan2(dy, dx)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    self.mouse_down = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    self.mouse_down = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    self.player["gun"] = self.guns[0]
-                elif event.key == pygame.K_2 and self.player["kills"] >= self.guns[1]["unlocks_at"]:
-                    self.player["gun"] = self.guns[1]
-                elif event.key == pygame.K_3 and self.player["kills"] >= self.guns[2]["unlocks_at"]:
-                    self.player["gun"] = self.guns[2]
-                elif event.key == pygame.K_4 and self.player["kills"] >= self.guns[3]["unlocks_at"]:
-                    self.player["gun"] = self.guns[3]
-                elif event.key == pygame.K_5 and self.player["kills"] >= self.guns[4]["unlocks_at"]:
-                    self.player["gun"] = self.guns[4]
-                elif event.key == pygame.K_6 and self.player["kills"] >= self.guns[5]["unlocks_at"]:
-                    self.player["gun"] = self.guns[5]
-                elif event.key == pygame.K_m:
-                    if len(self.player["walls"]) < 5:
-                        self.player["walls"].append({"x": self.player["x"], "y": self.player["y"]})
+                    self.player.gun = 1
+                elif event.key == pygame.K_2:
+                    self.player.gun = 2
+                elif event.key == pygame.K_3:
+                    self.player.gun = 3
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEMOTION:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                dx = mouse_x - self.player.x
+                dy = mouse_y - self.player.y
+                self.player.direction = math.atan2(dy, dx)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    self.shoot()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    self.player.gun = 1
+                elif event.key == pygame.K_2:
+                    self.player.gun = 2
+                elif event.key == pygame.K_3:
+                    self.player.gun = 3
+
+    def shoot(self):
+        if self.gun_cooldown == 0:
+            if self.player.gun == 1:  # Pistol
+                bullet_speed = 10
+                self.bullets.append(
+                    Bullet(
+                        self.player.x,
+                        self.player.y,
+                        self.player.direction,
+                        bullet_speed,
+                    )
+                )
+            elif self.player.gun == 2:  # Rifle
+                bullet_speed = 15
+                self.bullets.append(
+                    Bullet(
+                        self.player.x,
+                        self.player.y,
+                        self.player.direction,
+                        bullet_speed,
+                    )
+                )
+            elif self.player.gun == 3:  # Shotgun
+                bullet_speed = 10
+                for _ in range(5):
+                    angle = self.player.direction + random.uniform(-0.1, 0.1)
+                    self.bullets.append(
+                        Bullet(self.player.x, self.player.y, angle, bullet_speed)
+                    )
+            self.gun_cooldown = 10  # cooldown for 10 frames
 
     def update(self):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            self.player["y"] -= PLAYER_SPEED
-        if keys[pygame.K_s]:
-            self.player["y"] += PLAYER_SPEED
-        if keys[pygame.K_a]:
-            self.player["x"] -= PLAYER_SPEED
-        if keys[pygame.K_d]:
-            self.player["x"] += PLAYER_SPEED
+        # Update game logic here
+        delta_time = pygame.time.get_ticks() - self.last_update_time
+        self.last_update_time = pygame.time.get_ticks()
 
-        # Spawn enemies
-        if random.random() < 0.05:
-            self.enemies.append({"x": random.randint(0, SCREEN_WIDTH - ENEMY_SIZE), "y": random.randint(0, SCREEN_HEIGHT - ENEMY_SIZE), "type": random.choice(["basic", "fast", "tank"])})
-
-        # Move enemies
+        self.player.move()
         for enemy in self.enemies:
-            dx = self.player["x"] - enemy["x"]
-            dy = self.player["y"] - enemy["y"]
-            dist = math.hypot(dx, dy)
-            if dist > 0:
-                dx /= dist
-                dy /= dist
-                enemy["x"] += dx * ENEMY_SPEED
-                enemy["y"] += dy * ENEMY_SPEED * (1 if enemy["type"] != "fast" else 2)
-
-        # Shoot bullets
-        if keys[pygame.K_SPACE]:
-            if len(self.bullets) < self.player["gun"]["fire_rate"]:
-                self.bullets.append({"x": self.player["x"], "y": self.player["y"], "dx": 0, "dy": 0})
-
-        # Move bullets
-        for bullet in self.bullets[:]:
-            bullet["x"] += bullet["dx"]
-            bullet["y"] += bullet["dy"]
-            if bullet["x"] < 0 or bullet["x"] > SCREEN_WIDTH or bullet["y"] < 0 or bullet["y"] > SCREEN_HEIGHT:
-                self.bullets.remove(bullet)
+            enemy.move(self.player)
 
         # Collision detection
         for enemy in self.enemies[:]:
-            for bullet in self.bullets[:]:
-                if (bullet["x"] < enemy["x"] + ENEMY_SIZE and
-                    bullet["x"] + 5 > enemy["x"] and
-                    bullet["y"] < enemy["y"] + ENEMY_SIZE and
-                    bullet["y"] + 5 > enemy["y"]):
-                    self.enemies.remove(enemy)
-                    self.bullets.remove(bullet)
-                    self.player["kills"] += 1
-                    self.player["xp"] += 10
-                    break
+            if (
+                enemy.x < self.player.x + 20
+                and enemy.x + 20 > self.player.x
+                and enemy.y < self.player.y + 20
+                and enemy.y + 20 > self.player.y
+            ):
+                self.player.health -= 1
+                self.player.color = BLUE
+                self.enemies.remove(enemy)
 
-        # Update mines
-        for mine in self.mines[:]:
+        # Bullet updates
+        # Bullet updates
+        for bullet in self.bullets[:]:
+            bullet.move()
             for enemy in self.enemies[:]:
-                if math.hypot(mine["x"] - enemy["x"], mine["y"] - enemy["y"]) < 50:
-                    self.enemies.remove(enemy)
-                    self.mines.remove(mine)
-                    break
+                if (
+                    bullet.x < enemy.x + 20
+                    and bullet.x + 5 > enemy.x
+                    and bullet.y < enemy.y + 20
+                    and bullet.y + 5 > enemy.y
+                ):
+                    if bullet in self.bullets:
+                        self.bullets.remove(bullet)
+                    enemy.hits -= 1  # Reduce hits
+                    if enemy.hits <= 0:
+                        self.enemies.remove(enemy)
+                    self.player.kills += 1
+                    break  # Exit inner loop to avoid removing same bullet multiple times
 
-        # Update drones
-        for drone in self.drones[:]:
-            drone["x"] += drone["dx"]
-            drone["y"] += drone["dy"]
+        # Mine updates
+        for mine in self.player.mines[:]:
             for enemy in self.enemies[:]:
-                if math.hypot(drone["x"] - enemy["x"], drone["y"] - enemy["y"]) < 100:
+                if math.hypot(mine.x - enemy.x, mine.y - enemy.y) < mine.radius:
                     self.enemies.remove(enemy)
-                    break
+                    self.player.mines.remove(mine)
 
-        # Unlock guns
-        for gun in self.guns:
-            if self.player["kills"] >= gun["unlocks_at"] and self.player["gun"]["name"] != gun["name"]:
-                self.player["gun"] = gun
-                print(f"Unlocked {gun['name']}")
+        # Drone updates
+        for drone in self.player.drones:
+            drone.move(self.player, self.enemies, delta_time)
+            for drone_bullet in drone.bullets[:]:
+                drone_bullet.move()
+                for enemy in self.enemies[:]:
+                    if (
+                        drone_bullet.x < enemy.x + 20
+                        and drone_bullet.x + 5 > enemy.x
+                        and drone_bullet.y < enemy.y + 20
+                        and drone_bullet.y + 5 > enemy.y
+                    ):
+                        self.enemies.remove(enemy)
+                        drone.bullets.remove(drone_bullet)
 
-        # Level up
-        if self.player["xp"] >= self.player["level"] * 100:
-            self.player["level"] += 1
-            self.player["xp"] = 0
-            self.player["health"] += 10
-            print(f"Leveled up to {self.player['level']}")
+        # Wall updates
+        for wall in self.player.walls[:]:
+            for enemy in self.enemies[:]:
+                if (
+                    wall.x < enemy.x + 20
+                    and wall.x + wall.width > enemy.x
+                    and wall.y < enemy.y + 20
+                    and wall.y + wall.height > enemy.y
+                ):
+                    self.enemies.remove(enemy)
+                    wall.health -= 1
+                    if wall.health <= 0:
+                        self.player.walls.remove(wall)
 
-        # Spawn power-ups
-        if random.random() < 0.01:
-            self.power_ups.append({"x": random.randint(0, SCREEN_WIDTH), "y": random.randint(0, SCREEN_HEIGHT), "type": random.choice(["health", "ammo", "speed"])})
+        # Bullet stream updates
+        for bullet_stream in self.player.bullet_streams:
+            bullet_stream.update()
+            for bullet in bullet_stream.bullets[:]:
+                bullet.move()
+                for enemy in self.enemies[:]:
+                    if (
+                        bullet.x < enemy.x + 20
+                        and bullet.x + 5 > enemy.x
+                        and bullet.y < enemy.y + 20
+                        and bullet.y + 5 > enemy.y
+                    ):
+                        self.enemies.remove(enemy)
+                        bullet_stream.bullets.remove(bullet)
 
-        # Apply power-ups
-        for power_up in self.power_ups[:]:
-            if math.hypot(power_up["x"] - self.player["x"], power_up["y"] - self.player["y"]) < 20:
-                if power_up["type"] == "health":
-                    self.player["health"] += 20
-                elif power_up["type"] == "ammo":
-                    self.player["gun"]["fire_rate"] += 1
-                elif power_up["type"] == "speed":
-                    PLAYER_SPEED += 1
-                self.power_ups.remove(power_up)
-                break
+        # Check for game over
+        if self.player.health <= 0:
+            print("Game Over")
+            pygame.quit()
+            sys.exit()
+
+        # Check for round completion
+        if len(self.enemies) == 0:
+            self.player.round += 1
+            self.enemies = [Enemy() for _ in range(50 + self.player.round * 20)]
+
+        # Decrease gun cooldown
+        self.gun_cooldown -= 1
+        if self.gun_cooldown < 0:
+            self.gun_cooldown = 0
 
     def render(self):
-        screen.fill((0, 0, 0))
-        pygame.draw.rect(screen, BLUE, (self.player["x"], self.player["y"], PLAYER_SIZE, PLAYER_SIZE))
+        screen.fill(WHITE)
+        self.render_player()
+        self.render_enemies()
+        self.render_bullets()
+        self.render_mines()
+        self.render_drones()
+        self.render_walls()
+        self.render_bullet_streams()
+        self.render_hud()
+        pygame.display.flip()
+
+    def render_player(self):
+        pygame.draw.rect(
+            screen, self.player.color, (self.player.x, self.player.y, 20, 20)
+        )
+
+    def render_enemies(self):
         for enemy in self.enemies:
-            pygame.draw.rect(screen, RED, (enemy["x"], enemy["y"], ENEMY_SIZE, ENEMY_SIZE))
+            pygame.draw.rect(screen, RED, (enemy.x, enemy.y, 20, 20))
+
+    def render_bullets(self):
         for bullet in self.bullets:
-            pygame.draw.rect(screen, WHITE, (bullet["x"], bullet["y"], 5, 5))
-        for mine in self.mines:
-            pygame.draw.circle(screen, YELLOW, (mine["x"], mine["y"]), 20)
-        for drone in self.drones:
-            pygame.draw.rect(screen, GREEN, (drone["x"], drone["y"], 10, 10))
-        for wall in self.player["walls"]:
-            pygame.draw.rect(screen, WHITE, (wall["x"], wall["y"], 20, 20))
-        for power_up in self.power_ups:
-            pygame.draw.circle(screen, GREEN, (power_up["x"], power_up["y"]), 10)
+            pygame.draw.rect(screen, RED, (bullet.x, bullet.y, 5, 5))
+
+    def render_mines(self):
+        for mine in self.player.mines:
+            pygame.draw.circle(screen, YELLOW, (mine.x, mine.y), mine.radius)
+
+    def render_drones(self):
+        for drone in self.player.drones:
+            pygame.draw.rect(screen, GREEN, (drone.x, drone.y, 20, 20))
+            for drone_bullet in drone.bullets:
+                pygame.draw.rect(screen, RED, (drone_bullet.x, drone_bullet.y, 5, 5))
+
+    def render_walls(self):
+        for wall in self.player.walls:
+            pygame.draw.rect(screen, GRAY, (wall.x, wall.y, wall.width, wall.height))
+
+    def render_bullet_streams(self):
+        for bullet_stream in self.player.bullet_streams:
+            for bullet in bullet_stream.bullets:
+                pygame.draw.rect(screen, RED, (bullet.x, bullet.y, 5, 5))
+
+    def render_hud(self):
         font = pygame.font.Font(None, 36)
-        text = font.render(f"Kills: {self.player['kills']}", 1
-        
+
+        # Render gun type text
+        gun_text = "Gun: "
+        if self.player.gun == 1:
+            gun_text += "Pistol"
+        elif self.player.gun == 2:
+            gun_text += "Rifle"
+        elif self.player.gun == 3:
+            gun_text += "Shotgun"
+        text = font.render(gun_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 10))
+
+        # Render health text
+        health_text = "Health: " + str(self.player.health)
+        text = font.render(health_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 40))
+
+        # Render kills text
+        kills_text = "Kills: " + str(self.player.kills)
+        text = font.render(kills_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 70))
+
+        # Render round text
+        round_text = "Round: " + str(self.player.round)
+        text = font.render(round_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 100))
+
+        # Render mines text
+        mines_text = "Mines: " + str(len(self.player.mines))
+        text = font.render(mines_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 130))
+
+        # Render drones text
+        drones_text = "Drones: " + str(len(self.player.drones))
+        text = font.render(drones_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 160))
+
+        # Render walls text
+        walls_text = "Walls: " + str(len(self.player.walls))
+        text = font.render(walls_text, 1, (0, 0, 0))
+        screen.blit(text, (10, 190))
+
+
+def main():
+    clock = pygame.time.Clock()
+    game = Game()
+
+    while True:
+        game.handle_events()
+        game.update()
+        game.render()
+        clock.tick(FPS)
+
+
+if __name__ == "__main__":
+    main()
