@@ -30,22 +30,6 @@ EXPLOSION_RADIUS = 100  # Radius in which cars are affected by the explosion
 EXPLOSION_PARTICLE_COUNT = 50  # Number of particles in the explosion
 HIGH_SCORE_FILE = "high_score.txt"
 
-# Load high score from file
-if os.path.exists(HIGH_SCORE_FILE):
-    with open(HIGH_SCORE_FILE, "r") as file:
-        try:
-            high_score = int(file.read().strip())
-        except ValueError:
-            high_score = 0
-else:
-    high_score = 0
-
-# Save high score to file
-def save_high_score():
-    with open(HIGH_SCORE_FILE, "w") as file:
-        file.write(str(high_score))
-
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drift Chase")
 clock = pygame.time.Clock()
