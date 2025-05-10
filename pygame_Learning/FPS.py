@@ -139,10 +139,43 @@ class Game:
     def __init__(self):
         self.player = Player()
         self.enemies = [Enemy() for _ in range(50)]
+        self.kills = 0
         self.bullets = []
         self.gun_cooldown = 0
         self.mouse_down = False
         self.last_update_time = pygame.time.get_ticks()
+        self.guns = [
+    {"name": "Pistol", "unlocks_at": 0, "damage": 1, "fire_rate": 1},
+    {"name": "Rifle", "unlocks_at": 100, "damage": 2, "fire_rate": 0.5},
+    {"name": "Shotgun", "unlocks_at": 500, "damage": 3, "fire_rate": 0.2},
+    {"name": "Sniper", "unlocks_at": 2000, "damage": 5, "fire_rate": 0.1},
+    {"name": "Assault Rifle", "unlocks_at": 3000, "damage": 0.5, "fire_rate": 5},
+    {"name": "Laser", "unlocks_at": 5000, "damage": 0.2, "fire_rate": 10}
+
+]
+    def handle_gun(self):
+        gun_data = self.guns[self.player.gun - 1]
+        bullet_speed = gun_data["fire_rate"] * 10
+
+        if gun_data["name"] == "Shotgun":
+            return [
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction + random.uniform(-0.1, 0.1),
+                    bullet_speed,
+                )
+                for _ in range(5)
+            ]
+        else:
+            return [
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction,
+                    bullet_speed,
+                )
+            ]
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -164,9 +197,17 @@ class Game:
                 if event.key == pygame.K_1:
                     self.player.gun = 1
                 elif event.key == pygame.K_2:
-                    self.player.gun = 2
+                    if self.player.kills >= 50:
+                        self.player.gun = 2
                 elif event.key == pygame.K_3:
-                    self.player.gun = 3
+                    if self.player.kills >= 200:
+                        self.player.gun = 3
+                elif event.key == pygame.K_4:
+                    if self.player.kills >= 2000:
+                        self.player.gun = 4
+                elif event.key == pygame.K_5:
+                    if self.player.kills >= 5000:
+                        self.player.gun = 5   
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -185,40 +226,93 @@ class Game:
                 if event.key == pygame.K_1:
                     self.player.gun = 1
                 elif event.key == pygame.K_2:
-                    self.player.gun = 2
+                    if self.kills >= 50:
+                        self.player.gun = 2
+                    else:
+                        pass
                 elif event.key == pygame.K_3:
-                    self.player.gun = 3
+                    if self.kills >= 200:
+                        self.player.gun = 3
+                    else:
+                        pass
+                elif event.key == pygame.K_4:
+                    if self.kills >= 2000:
+                        self.player.gun = 4
+                    else:
+                        pass
+                elif event.key == pygame.K_5:
+                    if self.kills >= 5000:
+                        self.player.gun = 5                
+                    else:
+                        pass
 
     def shoot(self):
-        if self.gun_cooldown == 0:
-            if self.player.gun == 1:  # Pistol
-                bullet_speed = 10
+        if self.player.gun == 1:  # Pistol
+            bullet_speed = 10
+            self.bullets.append(
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction,
+                    bullet_speed,
+                )
+            )
+
+        elif self.player.gun == 2:  # Shotgun
+            bullet_speed = 8
+            for _ in range(5):
                 self.bullets.append(
                     Bullet(
                         self.player.x,
                         self.player.y,
-                        self.player.direction,
+                        self.player.direction + random.uniform(-0.1, 0.1),
                         bullet_speed,
                     )
                 )
-            elif self.player.gun == 2:  # Rifle
-                bullet_speed = 15
-                self.bullets.append(
-                    Bullet(
-                        self.player.x,
-                        self.player.y,
-                        self.player.direction,
-                        bullet_speed,
-                    )
+
+        elif self.player.gun == 3:  # Sniper
+            bullet_speed = 20
+            self.bullets.append(
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction,
+                    bullet_speed,
                 )
-            elif self.player.gun == 3:  # Shotgun
-                bullet_speed = 10
-                for _ in range(5):
-                    angle = self.player.direction + random.uniform(-0.1, 0.1)
-                    self.bullets.append(
-                        Bullet(self.player.x, self.player.y, angle, bullet_speed)
-                    )
-            self.gun_cooldown = 10  # cooldown for 10 frames
+            )
+
+        elif self.player.gun == 4:  # Rifle
+            bullet_speed = 15
+            self.bullets.append(
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction,
+                    bullet_speed,
+                )
+            )
+
+        elif self.player.gun == 5:  # Assault Rifle
+            bullet_speed = 12
+            self.bullets.append(
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction,
+                    bullet_speed,
+                )
+            )
+
+        elif self.player.gun == 6:  # Laser
+            bullet_speed = 25
+            self.bullets.append(
+                Bullet(
+                    self.player.x,
+                    self.player.y,
+                    self.player.direction,
+                    bullet_speed,
+                )
+            )
 
     def update(self):
         # Update game logic here
