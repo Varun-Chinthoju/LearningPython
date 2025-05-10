@@ -6,13 +6,11 @@ import os
 
 # High score file path
 
-
-
 # Initialize Pygame
 pygame.init()
 
 # Game settings
-WIDTH, HEIGHT = 1200, 800  # Make the map larger
+WIDTH, HEIGHT = 1200, 800  
 BG_COLOR = (245, 245, 245)  # Light grey background
 GRID_COLOR = (230, 230, 230)
 WHITE = (255, 255, 255)
@@ -64,7 +62,6 @@ score = 0
 game_over = False
 game_started = False  # Keeps track of whether the game has started
 high_score = 0  # Variable to keep track of the high score
-
 # Check for collisions between enemy cars and player car
 def check_enemy_collisions():
     global score, game_over
