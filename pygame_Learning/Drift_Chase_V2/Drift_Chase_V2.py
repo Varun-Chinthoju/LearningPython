@@ -2,6 +2,11 @@ import pygame
 import math
 import random
 import time
+import os
+
+# High score file path
+
+
 
 # Initialize Pygame
 pygame.init()
@@ -16,13 +21,30 @@ ENEMY_COLOR = (255, 100, 100)
 TRACK_COLOR = (0, 0, 0)
 MAX_SPEED = 6
 DRIFT_FACTOR = .92
-ENEMY_SPEED = 3.5
+ENEMY_SPEED = 3.5 # 3.5
 MAX_TURN_RADIUS = 150
 MIN_TURN_RADIUS = 30
 TURN_RADIUS_DECAY = 0.2
 TURN_RADIUS_RESET_TIME = 0.5
 EXPLOSION_RADIUS = 100  # Radius in which cars are affected by the explosion
 EXPLOSION_PARTICLE_COUNT = 50  # Number of particles in the explosion
+HIGH_SCORE_FILE = "high_score.txt"
+
+# Load high score from file
+if os.path.exists(HIGH_SCORE_FILE):
+    with open(HIGH_SCORE_FILE, "r") as file:
+        try:
+            high_score = int(file.read().strip())
+        except ValueError:
+            high_score = 0
+else:
+    high_score = 0
+
+# Save high score to file
+def save_high_score():
+    with open(HIGH_SCORE_FILE, "w") as file:
+        file.write(str(high_score))
+
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drift Chase")
@@ -53,8 +75,9 @@ player_pos = [WIDTH // 2, HEIGHT // 2]
 player_angle = 0
 player_speed = 0
 player_turning = False
-last_turn_time = time.time()
+last_turn_time = time.time()  # Initialize the last turn time to the current time
 turn_radius = MAX_TURN_RADIUS
+turn_amount = 5
 score = 0
 game_over = False
 game_started = False  # Keeps track of whether the game has started
@@ -141,7 +164,7 @@ while running:
             high_score = score  # Update the high score if the current score is higher
         font = pygame.font.SysFont(None, 50)
         game_over_text = font.render("Game Over!", True, (255, 0, 0))
-        restart_text = font.render("Press any key to Restart", True, (255, 255, 255))
+        restart_text = font.render("Press any key to Restart", True, (0, 0, 0))
         screen.blit(game_over_text, (WIDTH // 2 - 100, HEIGHT // 2))
         screen.blit(restart_text, (WIDTH // 2 - 150, HEIGHT // 2 + 50))
 
@@ -161,16 +184,18 @@ while running:
     if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]:
         player_turning = True
         if keys[pygame.K_LEFT]:
-            player_angle += 5
+            player_angle += turn_amount 
         if keys[pygame.K_RIGHT]:
-            player_angle -= 5
+            player_angle -= turn_amount
         drift_tracks.append((int(player_pos[0]), int(player_pos[1]), time.time()))  # Save track positions with timestamps
+    else:
+        player_turning = False
+        turn_amount = 5
     
     if keys[pygame.K_ESCAPE]:
         pygame.quit()
 
-    else:
-        player_turning = False
+
 
     # Drift effect
     player_speed *= DRIFT_FACTOR
@@ -182,14 +207,16 @@ while running:
     # Adjust turn radius when turning
     if player_turning:
         # Shrink the turn radius by 20% every 0.1 seconds
-        if time.time() - last_turn_time > 0.1:
-            turn_radius = max(MIN_TURN_RADIUS, turn_radius * 0.8)
+        if time.time() - last_turn_time > 0.4:
+            turn_amount = turn_amount * 1.1
+            if turn_amount>12:
+                turn_amount = 12
             last_turn_time = time.time()
 
     else:
         # Reset turn radius after not turning for a while
         if time.time() - last_turn_time > TURN_RADIUS_RESET_TIME:
-            turn_radius = MAX_TURN_RADIUS
+            turn_amount = 5
 
     # Calculate player facing angle based on movement
     if player_speed != 0:
