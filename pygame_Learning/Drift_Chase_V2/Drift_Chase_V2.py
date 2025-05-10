@@ -28,8 +28,6 @@ TURN_RADIUS_DECAY = 0.2
 TURN_RADIUS_RESET_TIME = 0.5
 EXPLOSION_RADIUS = 100  # Radius in which cars are affected by the explosion
 EXPLOSION_PARTICLE_COUNT = 50  # Number of particles in the explosion
-HIGH_SCORE_FILE = "high_score.txt"
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drift Chase")
 clock = pygame.time.Clock()
@@ -171,7 +169,7 @@ while running:
             player_angle += turn_amount 
         if keys[pygame.K_RIGHT]:
             player_angle -= turn_amount
-        drift_tracks.append((int(player_pos[0]), int(player_pos[1]), time.time()))  # Save track positions with timestamps
+        drift_tracks.append((int(player_pos[0]), int(player_pos[1]), time.time(), player_angle))  # Save track positions with timestamps
     else:
         player_turning = False
         turn_amount = 5
@@ -191,7 +189,7 @@ while running:
     # Adjust turn radius when turning
     if player_turning:
         # Shrink the turn radius by 20% every 0.1 seconds
-        if time.time() - last_turn_time > 0.4:
+        if time.time() - last_turn_time > 0.2:
             turn_amount = turn_amount * 1.1
             if turn_amount>12:
                 turn_amount = 12
@@ -232,10 +230,21 @@ while running:
         pygame.draw.line(screen, GRID_COLOR, (x, 0), (x, HEIGHT), 1)
     for y in range(0, HEIGHT, 40):
         pygame.draw.line(screen, GRID_COLOR, (0, y), (WIDTH, y), 1)
-
     # Draw drift tracks
     for track in drift_tracks[-500:]:
-        pygame.draw.rect(screen, TRACK_COLOR, (track[0] - 3, track[1] - 3, 6, 6))
+        current_player_angle = track[3]  # Use the player angle stored in the drift track
+        car_corners = [
+            (track[0] + 25 * math.cos(math.radians(current_player_angle)) - 15 * math.sin(math.radians(current_player_angle)),
+             track[1] - 25 * math.sin(math.radians(current_player_angle)) - 15 * math.cos(math.radians(current_player_angle))),
+            (track[0] + 25 * math.cos(math.radians(current_player_angle)) + 15 * math.sin(math.radians(current_player_angle)),
+             track[1] - 25 * math.sin(math.radians(current_player_angle)) + 15 * math.cos(math.radians(current_player_angle))),
+            (track[0] - 25 * math.cos(math.radians(current_player_angle)) + 15 * math.sin(math.radians(current_player_angle)),
+             track[1] + 25 * math.sin(math.radians(current_player_angle)) + 15 * math.cos(math.radians(current_player_angle))),
+            (track[0] - 25 * math.cos(math.radians(current_player_angle)) - 15 * math.sin(math.radians(current_player_angle)),
+             track[1] + 25 * math.sin(math.radians(current_player_angle)) - 15 * math.cos(math.radians(current_player_angle)))
+        ]
+        for corner in car_corners:
+            pygame.draw.circle(screen, TRACK_COLOR, (corner[0] - 3, corner[1] - 3), 4)
 
     # Draw player car
     rotated_player = pygame.transform.rotate(player_car, player_angle)
