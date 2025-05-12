@@ -2,15 +2,12 @@ import pygame
 import math
 import random
 import time
-import os
-
-# High score file path
 
 # Initialize Pygame
 pygame.init()
 
 # Game settings
-WIDTH, HEIGHT = 1200, 800  
+WIDTH, HEIGHT = 1200, 800
 BG_COLOR = (245, 245, 245)  # Light grey background
 GRID_COLOR = (230, 230, 230)
 WHITE = (255, 255, 255)
@@ -18,20 +15,17 @@ PLAYER_COLOR = (0, 200, 255)
 ENEMY_COLOR = (255, 100, 100)
 TRACK_COLOR = (0, 0, 0)
 MAX_SPEED = 6
-DRIFT_FACTOR = .92
-ENEMY_SPEED = 3.5 # 3.5
-MAX_TURN_RADIUS = 150
-MIN_TURN_RADIUS = 30
+DRIFT_FACTOR = 0.92  # Controls how much drifting reduces speed
+ENEMY_SPEED = 5
 TURN_RADIUS_DECAY = 0.2
 TURN_RADIUS_RESET_TIME = 0.5
-EXPLOSION_RADIUS = 100  # Radius in which cars are affected by the explosion
-EXPLOSION_PARTICLE_COUNT = 50  # Number of particles in the explosion
+FRICTION = 0.98  # How much friction slows the car down
+TURN_SMOOTHNESS = 0.05  # Smoothness of turns
+drift_tracks = []  # Initialize drift_tracks
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drift Chase")
 clock = pygame.time.Clock()
-
-# Track data
-drift_tracks = []
 
 # Load car images
 player_car = pygame.Surface((50, 30), pygame.SRCALPHA)
@@ -54,14 +48,14 @@ for i in range(num_enemies):
 player_pos = [WIDTH // 2, HEIGHT // 2]
 player_angle = 0
 player_speed = 0
-player_turning = False
+velocity = [0, 0]
 last_turn_time = time.time()  # Initialize the last turn time to the current time
-turn_radius = MAX_TURN_RADIUS
 turn_amount = 5
 score = 0
+high_score = 0  # Variable to keep track of the high score
 game_over = False
 game_started = False  # Keeps track of whether the game has started
-high_score = 0  # Variable to keep track of the high score
+
 # Check for collisions between enemy cars and player car
 def check_enemy_collisions():
     global score, game_over
@@ -94,7 +88,8 @@ def get_valid_spawn_position():
 # Increment score based on time or specific actions
 def update_score():
     global score
-    score+=1
+    score += 1
+
 # Game loop
 running = True
 while running:
@@ -135,7 +130,7 @@ while running:
         screen.blit(high_score_text, (10, 10))  # Display high score at top left
 
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(120)
         continue
 
     if game_over:
@@ -155,58 +150,33 @@ while running:
     # Player controls
     keys = pygame.key.get_pressed()
     if keys[pygame.K_UP]:
-        player_speed = min(player_speed + 0.5, MAX_SPEED)
+        player_speed = min(player_speed + 0.3, MAX_SPEED)
     if keys[pygame.K_DOWN]:
-        player_speed = max(player_speed - 0.5, -MAX_SPEED)
+        player_speed = max(player_speed - 0.3, -MAX_SPEED)
 
     # Handle turning and drifting
     if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]:
-        player_turning = True
         if keys[pygame.K_LEFT]:
-            player_angle += turn_amount 
+            player_angle += turn_amount
         if keys[pygame.K_RIGHT]:
             player_angle -= turn_amount
+
         drift_tracks.append((int(player_pos[0]), int(player_pos[1]), time.time(), player_angle))  # Save track positions with timestamps
-    else:
-        player_turning = False
-        turn_amount = 5
-    
-    if keys[pygame.K_ESCAPE]:
-        pygame.quit()
-
-
-
     # Drift effect
-    player_speed *= DRIFT_FACTOR
-    dx = player_speed * math.cos(math.radians(player_angle))
-    dy = -player_speed * math.sin(math.radians(player_angle))
-    player_pos[0] += dx
-    player_pos[1] += dy
+    rad_angle = math.radians(player_angle)
+    forward_vector = [math.cos(rad_angle), -math.sin(rad_angle)]
+    velocity[0] += forward_vector[0] * player_speed * TURN_SMOOTHNESS
+    velocity[1] += forward_vector[1] * player_speed * TURN_SMOOTHNESS
 
-    # Adjust turn radius when turning
-    if player_turning:
-        # Shrink the turn radius by 20% every 0.1 seconds
-        if time.time() - last_turn_time > 0.2:
-            turn_amount = turn_amount * 1.1
-            if turn_amount>12:
-                turn_amount = 12
-            last_turn_time = time.time()
-
-    else:
-        # Reset turn radius after not turning for a while
-        if time.time() - last_turn_time > TURN_RADIUS_RESET_TIME:
-            turn_amount = 5
-
-    # Calculate player facing angle based on movement
-    if player_speed != 0:
-        player_angle = -math.degrees(math.atan2(dy, dx))
+    # Apply friction and update position
+    velocity[0] *= FRICTION
+    velocity[1] *= FRICTION
+    player_pos[0] += velocity[0]
+    player_pos[1] += velocity[1]
 
     # Keep the player on screen
     player_pos[0] = max(0, min(WIDTH, player_pos[0]))
     player_pos[1] = max(0, min(HEIGHT, player_pos[1]))
-
-    # Remove old drift tracks (older than 1 second)
-    drift_tracks = [track for track in drift_tracks if time.time() - track[2] < 1]
 
     # Move enemy cars
     for enemy_car in enemy_cars:
@@ -217,18 +187,19 @@ while running:
         enemy_car['pos'][0] += ENEMY_SPEED * math.cos(angle_to_player)
         enemy_car['pos'][1] += ENEMY_SPEED * math.sin(angle_to_player)
 
-    # Check for enemy car collisions
-    check_enemy_collisions()
-
-    # Drawing everything
     screen.fill(BG_COLOR)
     # Draw grid
     for x in range(0, WIDTH, 40):
         pygame.draw.line(screen, GRID_COLOR, (x, 0), (x, HEIGHT), 1)
     for y in range(0, HEIGHT, 40):
         pygame.draw.line(screen, GRID_COLOR, (0, y), (WIDTH, y), 1)
-    # Draw drift tracks
-    for track in drift_tracks[-500:]:
+    # Check for enemy car collisions
+    check_enemy_collisions()
+    # Remove old drift tracks
+    current_time = time.time()
+    drift_tracks = [track for track in drift_tracks if current_time - track[2] <= 1]
+
+    for track in drift_tracks:
         current_player_angle = track[3]  # Use the player angle stored in the drift track
         car_corners = [
             (track[0] + 25 * math.cos(math.radians(current_player_angle)) - 15 * math.sin(math.radians(current_player_angle)),
@@ -242,7 +213,9 @@ while running:
         ]
         for corner in car_corners:
             pygame.draw.circle(screen, TRACK_COLOR, (corner[0] - 3, corner[1] - 3), 4)
+    # Drawing everything
 
+    
     # Draw player car
     rotated_player = pygame.transform.rotate(player_car, player_angle)
     screen.blit(rotated_player, (player_pos[0] - rotated_player.get_width() // 2, player_pos[1] - rotated_player.get_height() // 2))
@@ -252,14 +225,13 @@ while running:
         rotated_enemy = pygame.transform.rotate(enemy_car['car'], enemy_car['angle'])
         screen.blit(rotated_enemy, (enemy_car['pos'][0] - rotated_enemy.get_width() // 2, enemy_car['pos'][1] - rotated_enemy.get_height() // 2))
 
-    # Display score and high score at top left
+    # Draw score
     font = pygame.font.SysFont(None, 40)
     score_text = font.render(f"Score: {score}", True, (0, 0, 0))
     high_score_text = font.render(f"High Score: {high_score}", True, (0, 0, 0))
     screen.blit(score_text, (10, 10))
-    screen.blit(high_score_text, (10, 50))
+    screen.blit(high_score_text, (10, 30))
 
     pygame.display.flip()
     clock.tick(60)
-
 pygame.quit()
