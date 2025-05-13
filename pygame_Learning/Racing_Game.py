@@ -9,12 +9,10 @@ pygame.init()
 # Game settings
 WIDTH, HEIGHT = 1200, 800
 BG_COLOR = (245, 245, 245)  # Light grey background
-GRID_COLOR = (230, 230, 230)
-WHITE = (255, 255, 255)
-PLAYER1_COLOR = (0, 200, 255)
-PLAYER2_COLOR = (255, 100, 100)
-TRACK_COLOR = (0, 0, 0)
-MAX_SPEED = 6
+TRACK_COLOR = (0, 0, 0)  # Track color (dark grey/black)
+MUD_COLOR = (139, 69, 19)  # Brown color for mud
+WATER_COLOR = (0, 0, 255)  # Blue color for water
+MAX_SPEED = 10
 FRICTION = 0.98  # How much friction slows the car down
 TURN_SMOOTHNESS = 0.05  # Smoothness of turns
 DRIFT_TRAIL_DURATION = 1.0
@@ -51,22 +49,49 @@ class SmokeParticle:
             smoke_color = (180, 180, 180, self.alpha)  # Grey with fading opacity
             pygame.draw.circle(surface, smoke_color, (int(self.x), int(self.y)), int(self.size))
 
+class SplashParticle(SmokeParticle):
+    def draw(self, surface):
+        if self.alpha > 0:
+            splash_color = (0, 100, 255, self.alpha)  # Blue for water splashes
+            pygame.draw.circle(surface, splash_color, (int(self.x), int(self.y)), int(self.size))
+
+class MudParticle(SmokeParticle):
+    def draw(self, surface):
+        if self.alpha > 0:
+            mud_color = (139, 69, 19, self.alpha)  # Brown for mud splatters
+            pygame.draw.circle(surface, mud_color, (int(self.x), int(self.y)), int(self.size))
+
+
 # Smoke particles list
 smoke_particles = []
 drift_tracks = []  # Initialize drift_tracks here
 
 # Load player car images
 player1_car = pygame.Surface((CAR_WIDTH, CAR_HEIGHT), pygame.SRCALPHA)
-player1_car.fill(PLAYER1_COLOR)
+player1_car.fill((0, 200, 255))
 
 player2_car = pygame.Surface((CAR_WIDTH, CAR_HEIGHT), pygame.SRCALPHA)
-player2_car.fill(PLAYER2_COLOR)
+player2_car.fill((255, 100, 100))
 
 # Player properties
 players = [
     {"pos": [WIDTH // 3, HEIGHT // 2], "angle": 0, "speed": 0, "velocity": [0, 0]},  # Player 1
     {"pos": [2 * WIDTH // 3, HEIGHT // 2], "angle": 0, "speed": 0, "velocity": [0, 0]}  # Player 2
 ]
+
+# Function to check if player is in mud or water
+def check_in_special_zone(player):
+    # Mud zone
+    mud_rect = pygame.Rect(150, 250, 200, 100)
+    if mud_rect.collidepoint(player["pos"][0], player["pos"][1]):
+        return 'mud'
+
+    # Water zone
+    water_rect = pygame.Rect(600, 500, 200, 100)
+    if water_rect.collidepoint(player["pos"][0], player["pos"][1]):
+        return 'water'
+
+    return None
 
 # Game loop
 running = True
@@ -108,39 +133,96 @@ while running:
         players[1]["angle"] -= 5
         turning2 = True
 
-    # Handle collisions between the two cars
-        # Handle collisions between the two cars
-    p1, p2 = players[0], players[1]
-    dx = p2["pos"][0] - p1["pos"][0]
-    dy = p2["pos"][1] - p1["pos"][1]
-    distance = math.hypot(dx, dy)
-    min_distance = 2 * CAR_RADIUS
-# Handle collisions between the two cars
-    p1, p2 = players[0], players[1]
-    dx = p2["pos"][0] - p1["pos"][0]
-    dy = p2["pos"][1] - p1["pos"][1]
-    distance = math.hypot(dx, dy)
-    min_distance = 2 * CAR_RADIUS
+    # Check for special zones (mud/water)
+    for player in players:
+        special_zone = check_in_special_zone(player)
+        if special_zone == 'mud':
+            player["speed"] *= 0.7  # Reduce speed in mud
+        elif special_zone == 'water':
+            player["speed"] *= 0.5  # Reduce speed in water
 
+    # Handle collisions between the two cars
+    p1, p2 = players[0], players[1]
+    dx = p2["pos"][0] - p1["pos"][0]
+    dy = p2["pos"][1] - p1["pos"][1]
+    distance = math.hypot(dx, dy)
+    min_distance = 2 * CAR_RADIUS
+    
     if distance < min_distance and distance != 0:
-        # Calculate the overlap amount
+        # Calculate overlap amount
         overlap = min_distance - distance
-        # Apply a force to push the cars apart
         push_vector = [dx / distance * overlap / 2, dy / distance * overlap / 2]
         
-        # Apply the push to both cars
+        # Separate the cars to resolve the collision
         p1["pos"][0] -= push_vector[0]
         p1["pos"][1] -= push_vector[1]
         p2["pos"][0] += push_vector[0]
         p2["pos"][1] += push_vector[1]
         
-        # Apply rotational force based on collision direction with reduced effect
-        p1_angle_change = math.degrees(math.atan2(dy, dx))  # Calculate angle from the collision
-        p2_angle_change = math.degrees(math.atan2(-dy, -dx))  # Opposite angle for the second car
+        # Calculate the normal and tangent vectors for the collision
+        normal = [dx / distance, dy / distance]
+        tangent = [-normal[1], normal[0]]
         
-        # Apply a subtle rotational force to simulate realistic behavior (smaller multiplier)
-        p1["angle"] += p1_angle_change * 0.03  # Reduced rotation force for car 1
-        p2["angle"] += p2_angle_change * 0.03  # Reduced rotation force for car 2
+        # Project velocities onto the normal and tangent vectors
+        v1n = normal[0] * p1["velocity"][0] + normal[1] * p1["velocity"][1]
+        v2n = normal[0] * p2["velocity"][0] + normal[1] * p2["velocity"][1]
+        v1t = tangent[0] * p1["velocity"][0] + tangent[1] * p1["velocity"][1]
+        v2t = tangent[0] * p2["velocity"][0] + tangent[1] * p2["velocity"][1]
+        
+        # Swap the normal components (elastic collision)
+        v1n_new = v2n * 0.8  # Slightly dampen the collision
+        v2n_new = v1n * 0.8
+        
+        # Update velocities
+        p1["velocity"][0] = tangent[0] * v1t + normal[0] * v1n_new
+        p1["velocity"][1] = tangent[1] * v1t + normal[1] * v1n_new
+        p2["velocity"][0] = tangent[0] * v2t + normal[0] * v2n_new
+        p2["velocity"][1] = tangent[1] * v2t + normal[1] * v2n_new
+        
+        # Add slight rotation effect for realism
+        p1["angle"] += random.uniform(-10, 10)
+        p2["angle"] += random.uniform(-10, 10)
+
+        # Add splash or mud effects based on zones
+        for player in [p1, p2]:
+            zone = check_in_special_zone(player)
+            if zone == 'mud':
+                for _ in range(10):  # Increase for more intense splatter
+                    speed_x = random.uniform(-3, 3)
+                    speed_y = random.uniform(-3, 3)
+                    size = random.randint(3, 7)
+                    lifetime = random.uniform(0.5, 1.5)
+                    smoke_particles.append(SmokeParticle(player["pos"][0], player["pos"][1], speed_x, speed_y))
+            elif zone == 'water':
+                for _ in range(15):  # Increase for more dramatic splash
+                    speed_x = random.uniform(-5, 5)
+                    speed_y = random.uniform(-5, 5)
+                    size = random.randint(2, 6)
+                    lifetime = random.uniform(0.3, 0.8)
+                    smoke_particles.append(SmokeParticle(player["pos"][0], player["pos"][1], speed_x, speed_y))
+
+        # Add drift tracks and smoke for both cars on collision
+        for player in [p1, p2]:
+            # Add drift tracks
+            corners = [
+                (player["pos"][0] + 25 * math.cos(rad_angle) - 15 * math.sin(rad_angle),
+                 player["pos"][1] - 25 * math.sin(rad_angle) - 15 * math.cos(rad_angle)),
+                (player["pos"][0] + 25 * math.cos(rad_angle) + 15 * math.sin(rad_angle),
+                 player["pos"][1] - 25 * math.sin(rad_angle) + 15 * math.cos(rad_angle)),
+                (player["pos"][0] - 25 * math.cos(rad_angle) + 15 * math.sin(rad_angle),
+                 player["pos"][1] + 25 * math.sin(rad_angle) + 15 * math.cos(rad_angle)),
+                (player["pos"][0] - 25 * math.cos(rad_angle) - 15 * math.sin(rad_angle),
+                 player["pos"][1] + 25 * math.sin(rad_angle) - 15 * math.cos(rad_angle))
+            ]
+
+            for corner in corners:
+                drift_tracks.append((int(corner[0]), int(corner[1]), time.time()))
+
+            # Add smoke particles
+            for _ in range(3):  # Adjust the number of smoke particles
+                speed_x = random.uniform(-1, 1) * 2
+                speed_y = random.uniform(-1, 1) * 2
+                smoke_particles.append(SmokeParticle(player["pos"][0], player["pos"][1], speed_x, speed_y))
 
     # Update each player's movement and drift
     for player, car_surface, turning in zip(players, [player1_car, player2_car], [turning1, turning2]):
