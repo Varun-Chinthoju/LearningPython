@@ -46,8 +46,7 @@ TRACK_INNER_RECT = pygame.Rect(TRACK_MARGIN + TRACK_WIDTH_PX, TRACK_MARGIN + TRA
 
 # Start/Finish Line
 START_FINISH_Y = HEIGHT // 2
-START_FINISH_LINE = pygame.Rect(WIDTH - TRACK_MARGIN - TRACK_WIDTH_PX // 2 - 5, START_FINISH_Y - TRACK_WIDTH_PX // 2,
-                                10, TRACK_WIDTH_PX)
+START_FINISH_LINE = pygame.Rect(WIDTH - TRACK_MARGIN - TRACK_WIDTH_PX - TRACK_WIDTH_PX // 2 + 100, HEIGHT // 2-5, TRACK_WIDTH_PX, 10)
 
 # Checkpoints
 CHECKPOINTS = [
@@ -124,9 +123,9 @@ pygame.draw.rect(player2_car_orig, (255, 255, 0), (CAR_WIDTH * 0.7, 0, CAR_WIDTH
 
 # --- Player Properties ---
 # Keep the structure, add velocity back from original code
-start_pos1 = [START_FINISH_LINE.centerx + 30, START_FINISH_LINE.centery - 30]
-start_pos2 = [START_FINISH_LINE.centerx + 30, START_FINISH_LINE.centery + 30]
-start_angle = -90 # Pointing left
+start_pos1 = [START_FINISH_LINE.centerx + 30, START_FINISH_LINE.centery]
+start_pos2 = [START_FINISH_LINE.centerx - 30, START_FINISH_LINE.centery]
+start_angle = -270 # Pointing left
 
 players = [
     {"pos": list(start_pos1), "angle": start_angle, "speed": 0, "velocity": [0.0, 0.0], "lap": 0, "next_checkpoint": 0, "surface": player1_car_orig, "off_track": False, "finished": False, "finish_time": 0},
