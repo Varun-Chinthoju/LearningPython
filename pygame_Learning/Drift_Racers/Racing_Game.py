@@ -33,7 +33,10 @@ pygame.display.set_caption(f"Drift Racer - {TOTAL_LAPS} Laps")
 clock = pygame.time.Clock()
 UI_FONT = pygame.font.SysFont("monospace", 24, bold=True)
 WINNER_FONT = pygame.font.SysFont("impact", 80)
-
+# --- Sound Effects ---
+pygame.mixer.init()
+drift_sound = pygame.mixer.Sound("car-motor-revving.wav") # Replace "drift.wav" with your sound file
+drift_sound.set_volume(0.5)  # Adjust volume as needed
 # --- Track and Obstacle Definitions ---
 TRACK_MARGIN = 100
 TRACK_WIDTH_PX = 200 # Width of the tarmac
@@ -263,8 +266,10 @@ while running:
         # Player 1 Controls (WASD) - Original Style Speed Adjust
         turning1 = False
         if keys[pygame.K_w]:
+            drift_sound.play()
             players[0]["speed"] = min(players[0]["speed"] + 0.3, MAX_SPEED)
         if keys[pygame.K_s]:
+            drift_sound.play()
             players[0]["speed"] = max(players[0]["speed"] - 0.3, -MAX_SPEED / 1.5) # Allow reverse
         if keys[pygame.K_a]:
             players[0]["angle"] += 5 # Original fixed turn rate
@@ -276,8 +281,10 @@ while running:
         # Player 2 Controls (Arrow Keys) - Original Style Speed Adjust
         turning2 = False
         if keys[pygame.K_UP]:
+            drift_sound.play()
             players[1]["speed"] = min(players[1]["speed"] + 0.3, MAX_SPEED)
         if keys[pygame.K_DOWN]:
+            drift_sound.play()
             players[1]["speed"] = max(players[1]["speed"] - 0.3, -MAX_SPEED / 1.5) # Allow reverse
         if keys[pygame.K_LEFT]:
             players[1]["angle"] += 5
@@ -287,6 +294,9 @@ while running:
             turning2 = True
 
         player_turn_flags = [turning1, turning2]
+
+        if (not(keys[pygame.K_DOWN] or keys[pygame.K_UP]) and not(keys[pygame.K_w] or keys[pygame.K_s])) and game_state == "FINISHED":
+            drift_sound.stop()
 
         # Update movement, physics, laps for each player
         for i, player in enumerate(players):
